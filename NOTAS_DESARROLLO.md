@@ -74,6 +74,20 @@ strtoupper(substr(md5($id . implode(',', array_column($winners, 'comment_id'))),
 
 ## Historial de versiones
 
+### v2.1 — 2026-05-18 (Claude Code)
+
+**Funcionalidades nuevas:**
+- Soporte YouTube Shorts (`/shorts/VIDEO_ID` en `extract_video_id()`)
+- Rate limiting: máx 10 sorteos/hora por IP (tabla `sorteo_rate` en SQLite, IP hasheada SHA256)
+- Página pública `stats.php`: total sorteos, canales usados con conteo y última fecha, últimos 20 sorteos
+- Notificación Telegram al admin al crear cada sorteo (canal, video, ganadores)
+- Enlace a `stats.php` en el footer (ES: "Estadísticas" / EN: "Stats")
+- Columnas nuevas en `sorteos`: `channel_title`, `ip_hash`
+
+**Notas técnicas:**
+- `rate_limit_ok()` en `db.php`: ventana deslizante por hora (floor(time/3600)), limpieza de ventanas > 2h en `_cleanup_old()`
+- Telegram: `notify_telegram()` con `file_get_contents` no-blocking
+
 ### v2.0 — 2026-05-18 (Claude Code)
 
 **Funcionalidades nuevas:**
@@ -110,13 +124,13 @@ lftp -u "carlos@mammoli.ar,PASS" ftp://mammoli.ar -e "
   put web/db.php          -o /sorteo/db.php;
   put web/certificate.php -o /sorteo/certificate.php;
   put web/verificar.php   -o /sorteo/verificar.php;
+  put web/stats.php       -o /sorteo/stats.php;
   bye"
 ```
 
 ## Pendientes / Ideas
 
 - [ ] Verificación histórica: si el sorteo expiró, mostrar hash solo si coincide con un registro archivado
-- [ ] Rate limiting básico en `api.php` (por IP, por día)
 - [ ] Caché de metadatos de video para no re-pedir a la API en re-sorteos
 - [ ] Exportar lista de ganadores como CSV/TXT
 - [ ] Modo oscuro en certificado (actualmente siempre claro para impresión)

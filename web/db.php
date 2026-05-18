@@ -28,6 +28,18 @@ function get_db(): PDO {
     try { $pdo->exec("ALTER TABLE comments ADD COLUMN source_video_id TEXT"); } catch (\PDOException $e) {}
     // Migración: video_ids en sorteos
     try { $pdo->exec("ALTER TABLE sorteos ADD COLUMN video_ids TEXT"); } catch (\PDOException $e) {}
+    // Migración: channel_title y ip_hash en sorteos (stats + rate limit)
+    try { $pdo->exec("ALTER TABLE sorteos ADD COLUMN channel_title TEXT"); } catch (\PDOException $e) {}
+    try { $pdo->exec("ALTER TABLE sorteos ADD COLUMN ip_hash TEXT"); } catch (\PDOException $e) {}
+    // Tabla de rate limiting por IP
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS sorteo_rate (
+            ip_hash     TEXT NOT NULL,
+            window_start INTEGER NOT NULL,
+            count       INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (ip_hash, window_start)
+        )");
+    } catch (\PDOException $e) {}
 
     return $pdo;
 }
@@ -100,6 +112,30 @@ function _cleanup_old(PDO $pdo): void {
         $pdo->prepare("DELETE FROM comments WHERE sorteo_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM sorteos  WHERE id = ?")->execute([$id]);
     }
+
+    // Limpieza rate limit: borrar ventanas de más de 2 horas
+    try {
+        $pdo->exec("DELETE FROM sorteo_rate WHERE window_start < " . (time() - 7200));
+    } catch (\PDOException $e) {}
+}
+
+// ── RATE LIMITING ─────────────────────────────────────────────────────────────
+
+function rate_limit_ok(string $ip_hash, int $max = 10, int $window = 3600): bool {
+    $pdo = get_db();
+    $win = (int)(floor(time() / $window) * $window);
+    $st = $pdo->prepare("SELECT count FROM sorteo_rate WHERE ip_hash = ? AND window_start = ?");
+    $st->execute([$ip_hash, $win]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        $pdo->prepare("INSERT INTO sorteo_rate (ip_hash, window_start, count) VALUES (?, ?, 1)")
+            ->execute([$ip_hash, $win]);
+        return true;
+    }
+    if ((int)$row['count'] >= $max) return false;
+    $pdo->prepare("UPDATE sorteo_rate SET count = count + 1 WHERE ip_hash = ? AND window_start = ?")
+        ->execute([$ip_hash, $win]);
+    return true;
 }
 
 // ── CRUD ─────────────────────────────────────────────────────────────────────

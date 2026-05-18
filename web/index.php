@@ -895,6 +895,7 @@ footer a:hover { color: var(--text); }
             <a href="https://mammoli.ar">mammoli.ar</a>
             · <span data-i18n="footer_brand">Sorteador de YouTube</span> v2.0
             · <a href="verificar.php" data-i18n="footer_verify">Verificar certificado</a>
+            · <a href="stats.php" data-i18n="footer_stats">Estadísticas</a>
         </div>
     </footer>
 </div>
@@ -1000,6 +1001,7 @@ var LANGS = {
     header_tagline:      'Sin apps · sin registro',
     footer_cafecito:     '☕ Invitame un cafecito',
     footer_verify:       'Verificar certificado',
+    footer_stats:        'Estadísticas',
   },
   en: {
     label_url:           'YouTube Video URL',
@@ -1080,6 +1082,7 @@ var LANGS = {
     header_tagline:      'No apps · no sign-up',
     footer_cafecito:     '☕ Buy me a coffee',
     footer_verify:       'Verify certificate',
+    footer_stats:        'Stats',
   }
 };
 

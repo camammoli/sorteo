@@ -43,9 +43,19 @@ function extract_video_id(string $url): ?string {
     if (preg_match('#youtu\.be/([a-zA-Z0-9_-]{11})#', $url, $m)) return $m[1];
     // /embed/VIDEO_ID
     if (preg_match('#/embed/([a-zA-Z0-9_-]{11})#', $url, $m)) return $m[1];
+    // /shorts/VIDEO_ID (YouTube Shorts)
+    if (preg_match('#/shorts/([a-zA-Z0-9_-]{11})#', $url, $m)) return $m[1];
     // Bare video ID (11 chars)
     if (preg_match('/^[a-zA-Z0-9_-]{11}$/', $url)) return $url;
     return null;
+}
+
+function notify_telegram(string $msg): void {
+    $token   = 'REDACTED_TG_TOKEN';
+    $chat_id = '124659252';
+    @file_get_contents(
+        "https://api.telegram.org/bot{$token}/sendMessage?chat_id={$chat_id}&text=" . urlencode($msg)
+    );
 }
 
 $action = $_GET['action'] ?? '';
@@ -69,6 +79,13 @@ if ($action === 'create') {
         if ($vid && !in_array($vid, $video_ids)) $video_ids[] = $vid;
     }
     if (empty($video_ids)) json_err('URL de YouTube inválida.');
+
+    // Rate limiting: máx 10 sorteos/hora por IP
+    $ip      = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+    $ip_hash = hash('sha256', trim(explode(',', $ip)[0]));
+    if (!rate_limit_ok($ip_hash, 10, 3600)) {
+        json_err('Límite de sorteos alcanzado. Podés crear hasta 10 sorteos por hora.', 429);
+    }
 
     // Validar opciones
     $num_winners    = (int)($body['num_winners']    ?? 1);
@@ -121,16 +138,25 @@ if ($action === 'create') {
 
     $id = gen_uuid_v4();
     create_sorteo($id, $video_ids[0], $options);
-    update_sorteo($id, ['video_ids' => json_encode($video_ids)]);
+    update_sorteo($id, ['video_ids' => json_encode($video_ids), 'ip_hash' => $ip_hash]);
 
     // Auto-detectar dueño del canal para el primer video
     $channel_owner = '';
+    $video_title   = '';
     $vi_url = "https://www.googleapis.com/youtube/v3/videos?part=snippet&id={$video_ids[0]}&key=" . YT_API_KEY;
     $vi_resp = @file_get_contents($vi_url);
     if ($vi_resp !== false) {
         $vi_data = json_decode($vi_resp, true);
         $channel_owner = $vi_data['items'][0]['snippet']['channelTitle'] ?? '';
+        $video_title   = $vi_data['items'][0]['snippet']['title'] ?? '';
     }
+    if ($channel_owner !== '') {
+        update_sorteo($id, ['channel_title' => $channel_owner]);
+    }
+
+    // Notificar al admin
+    $n_videos = count($video_ids);
+    notify_telegram("🎰 Nuevo sorteo creado\nCanal: {$channel_owner}\nVideo: {$video_title}" . ($n_videos > 1 ? " (+".($n_videos-1)." más)" : "") . "\nGanadores: {$num_winners}" . ($num_backups > 0 ? " + {$num_backups} suplentes" : ""));
 
     json_ok(['id' => $id, 'video_id' => $video_ids[0], 'channel_owner' => $channel_owner]);
 }
