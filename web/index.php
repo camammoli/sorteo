@@ -501,12 +501,34 @@ body {
 /* ── Footer ──────────────────────────────────────────────────────────────────── */
 footer {
     text-align: center;
-    padding: 24px 16px 32px;
+    padding: 20px 16px 36px;
     color: var(--muted);
     font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
 }
 footer a { color: var(--muted); text-decoration: none; }
 footer a:hover { color: var(--text); }
+.footer-cafecito {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #7c4a2d;
+    color: #fff !important;
+    border-radius: 20px;
+    padding: 9px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none !important;
+    transition: opacity .15s, transform .1s;
+    letter-spacing: .01em;
+}
+.footer-cafecito:hover { opacity: .85 !important; transform: scale(1.03); }
+.footer-meta { font-size: 12px; color: var(--muted); }
+.footer-meta a { color: var(--muted); text-decoration: none; }
+.footer-meta a:hover { color: var(--text); }
 
 /* ── State visibility ────────────────────────────────────────────────────────── */
 .state { display: none; }
@@ -868,7 +890,12 @@ footer a:hover { color: var(--text); }
     </main>
 
     <footer>
-        <a href="https://mammoli.ar">mammoli.ar</a> · <span data-i18n="footer_brand">Sorteador de YouTube</span> v2.0
+        <a href="https://cafecito.app/mammoli" class="footer-cafecito" target="_blank" rel="noopener" data-i18n="footer_cafecito">☕ Invitame un cafecito</a>
+        <div class="footer-meta">
+            <a href="https://mammoli.ar">mammoli.ar</a>
+            · <span data-i18n="footer_brand">Sorteador de YouTube</span> v2.0
+            · <a href="verificar.php" data-i18n="footer_verify">Verificar certificado</a>
+        </div>
     </footer>
 </div>
 
@@ -971,6 +998,8 @@ var LANGS = {
     prompt_copy_link:    'Copiá este enlace:',
     header_picker:       ' Sorteador',
     header_tagline:      'Sin apps · sin registro',
+    footer_cafecito:     '☕ Invitame un cafecito',
+    footer_verify:       'Verificar certificado',
   },
   en: {
     label_url:           'YouTube Video URL',
@@ -1049,6 +1078,8 @@ var LANGS = {
     prompt_copy_link:    'Copy this link:',
     header_picker:       ' Comment Picker',
     header_tagline:      'No apps · no sign-up',
+    footer_cafecito:     '☕ Buy me a coffee',
+    footer_verify:       'Verify certificate',
   }
 };
 

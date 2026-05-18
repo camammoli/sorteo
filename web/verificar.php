@@ -121,7 +121,7 @@ $sc = $state_colors[$state] ?? null;
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= vs('page_title') ?></title>
-<meta name="robots" content="noindex,nofollow">
+<meta name="robots" content="index,follow">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
