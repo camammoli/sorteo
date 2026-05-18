@@ -350,14 +350,32 @@ body {
     margin-top: 2px;
     word-break: break-word;
 }
+.winner-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 5px;
+    flex-wrap: wrap;
+}
 .winner-link {
     font-size: 12px;
     color: var(--accent);
     text-decoration: none;
-    margin-top: 4px;
-    display: inline-block;
 }
 .winner-link:hover { text-decoration: underline; }
+.winner-copy-btn {
+    font-size: 12px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--muted);
+    padding: 2px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+}
+.winner-copy-btn:hover { color: var(--text); border-color: #6b7280; }
+.winner-copy-btn.copy-ok { color: var(--success); border-color: var(--success); }
 
 /* ── Actions row ─────────────────────────────────────────────────────────────── */
 .actions-row {
@@ -1217,20 +1235,31 @@ function renderWinnersList(winners, videoId, videoTitle) {
 
     var medals = ['🥇', '🥈', '🥉'];
     var posClasses = ['pos-1', 'pos-2', 'pos-3'];
+    var single = winners.length === 1;
+
+    document.querySelector('#state-winners .winners-header h2').textContent =
+        single ? 'Ganador del sorteo' : 'Ganadores del sorteo';
+    document.querySelector('#state-winners .trophy').textContent =
+        single ? '🏆' : '🎉';
 
     var html = '';
     winners.forEach(function(w, i) {
-        var pos    = w.position || (i + 1);
+        var pos      = w.position || (i + 1);
         var posLabel = medals[pos - 1] || '#' + pos;
         var posClass = posClasses[pos - 1] || '';
 
         var commentText = w.text || '';
-        if (commentText.length > 120) {
-            commentText = commentText.substring(0, 120) + '...';
-        }
+        if (commentText.length > 120) commentText = commentText.substring(0, 120) + '...';
 
+        // Para el lc= usar solo el ID base (antes del punto) para que YouTube
+        // navegue al hilo incluso cuando el ganador es una respuesta
+        var baseCommentId = w.comment_id ? w.comment_id.split('.')[0] : '';
         var ytLink = 'https://www.youtube.com/watch?v=' +
-            encodeURIComponent(videoId) + '&lc=' + encodeURIComponent(w.comment_id);
+            encodeURIComponent(videoId) + '&lc=' + encodeURIComponent(baseCommentId);
+
+        var mention = single
+            ? '@' + w.author + ' ¡Felicitaciones! Sos el ganador del sorteo 🏆'
+            : '@' + w.author + ' ¡Felicitaciones! Sos uno de los ganadores del sorteo 🎉';
 
         html += '<div class="winner-item">';
         html += '<div class="winner-pos ' + posClass + '">' + posLabel + '</div>';
@@ -1239,12 +1268,30 @@ function renderWinnersList(winners, videoId, videoTitle) {
         if (commentText) {
             html += '<div class="winner-comment">' + escHtml(commentText) + '</div>';
         }
+        html += '<div class="winner-actions">';
         html += '<a class="winner-link" href="' + escHtml(ytLink) +
-            '" target="_blank" rel="noopener">Ver comentario en YouTube ↗</a>';
+            '" target="_blank" rel="noopener">Ver comentario ↗</a>';
+        html += '<button class="winner-copy-btn" data-mention="' + escHtml(mention) +
+            '" title="Copiar mención para notificar al ganador">📋 Copiar mención</button>';
+        html += '</div>';
         html += '</div></div>';
     });
 
     document.getElementById('winners-list').innerHTML = html;
+
+    // Botones de copiar mención
+    document.querySelectorAll('.winner-copy-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var text = btn.dataset.mention;
+            navigator.clipboard.writeText(text).then(function() {
+                var orig = btn.innerHTML;
+                btn.innerHTML = '✓ Copiado';
+                btn.classList.add('copy-ok');
+                setTimeout(function() { btn.innerHTML = orig; btn.classList.remove('copy-ok'); }, 2000);
+            }).catch(function() { prompt('Copiá esta mención:', text); });
+        });
+    });
+
     showState('winners');
 }
 
