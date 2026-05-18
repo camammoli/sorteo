@@ -568,6 +568,58 @@ footer a:hover { color: var(--text); }
     opacity: 0;
     animation: winner-pop .45s cubic-bezier(.34,1.56,.64,1) both;
 }
+
+/* ── Tema claro ──────────────────────────────────────────────────────────────── */
+.theme-light {
+    --bg:        #f1f5f9;
+    --surface:   #ffffff;
+    --border:    #cbd5e1;
+    --text:      #0f172a;
+    --muted:     #64748b;
+    --accent:    #2563eb;
+    --success:   #16a34a;
+    --danger:    #dc2626;
+    --warning:   #b45309;
+    --shadow:    0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.1);
+}
+.theme-light .header {
+    background: #1e3a5f;
+}
+.theme-light .progress-bar-fill {
+    background: linear-gradient(90deg, #2563eb, #6366f1);
+}
+.theme-light .field input[type=date] { color-scheme: light; }
+.field input[type=date] { color-scheme: dark; }
+.theme-light .stat-chip { background: #e2e8f0; }
+.theme-light .backup-section { border-top-color: #cbd5e1; }
+.theme-light .winner-copy-btn { background: #f1f5f9; }
+.theme-light #dice-overlay { background: rgba(17,24,39,.96); }
+.theme-light .error-box { background: rgba(220,38,38,.08); border-color: rgba(220,38,38,.3); }
+.theme-light .check-row-festejo span { color: #b45309; }
+
+/* ── Selector idioma/tema ────────────────────────────────────────────────────── */
+.header-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.ctrl-btn {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 6px;
+    color: #f9fafb;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1;
+    transition: background .15s;
+    letter-spacing: .03em;
+}
+.ctrl-btn:hover { background: rgba(255,255,255,.22); }
 </style>
 </head>
 <body>
@@ -581,6 +633,10 @@ footer a:hover { color: var(--text); }
                 <h1>Sorteador de YouTube</h1>
                 <div class="subtitle">Sorteos de comentarios · sin apps · sin registro</div>
             </div>
+            <div class="header-controls">
+                <button class="ctrl-btn" id="btn-lang" title="Cambiar idioma / Change language">EN</button>
+                <button class="ctrl-btn" id="btn-theme" title="Cambiar tema / Change theme">☀️</button>
+            </div>
         </div>
     </header>
 
@@ -592,40 +648,41 @@ footer a:hover { color: var(--text); }
                 <div id="video-urls-wrap">
                     <div class="video-url-row" data-idx="0">
                         <div class="field">
-                            <label>URL del video de YouTube</label>
-                            <input type="url" class="yt-url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
+                            <label data-i18n="label_url">URL del video de YouTube</label>
+                            <input type="url" class="yt-url-input" placeholder="https://www.youtube.com/watch?v=..." data-i18n-placeholder="placeholder_url" autocomplete="off" spellcheck="false">
                         </div>
                     </div>
                 </div>
-                <button type="button" class="btn btn-ghost" id="btn-add-video" style="margin-top:8px;font-size:13px">+ Agregar otro video</button>
+                <button type="button" class="btn btn-ghost" id="btn-add-video" style="margin-top:8px;font-size:13px" data-i18n="btn_add_video">+ Agregar otro video</button>
             </div>
 
             <div class="card">
-                <div class="section-label">Opciones del sorteo</div>
+                <div class="section-label" data-i18n="section_options">Opciones del sorteo</div>
                 <div class="options-grid">
                     <div class="options-row-2">
                         <div class="field">
-                            <label for="opt-winners">Ganadores</label>
+                            <label for="opt-winners" data-i18n="label_winners">Ganadores</label>
                             <input type="number" id="opt-winners" value="1" min="1" max="100">
                         </div>
                         <div class="field">
-                            <label for="opt-max">Límite comentarios</label>
+                            <label for="opt-max" data-i18n="label_max_comments">Límite comentarios</label>
                             <select id="opt-max">
                                 <option value="1000">1.000</option>
                                 <option value="5000">5.000</option>
                                 <option value="10000" selected>10.000</option>
                                 <option value="50000">50.000</option>
-                                <option value="0">Sin límite</option>
+                                <option value="0" data-i18n="opt_unlimited">Sin límite</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="field">
-                        <label for="opt-keyword">Filtrar por palabra clave</label>
+                        <label for="opt-keyword" data-i18n="label_keyword">Filtrar por palabra clave</label>
                         <input
                             type="text"
                             id="opt-keyword"
                             placeholder="Ej: #participo (opcional)"
+                            data-i18n-placeholder="placeholder_keyword"
                             maxlength="100"
                         >
                     </div>
@@ -633,47 +690,47 @@ footer a:hover { color: var(--text); }
                     <div class="divider"></div>
 
                     <div class="field">
-                        <label for="opt-max-per-user">Máximo por usuario</label>
+                        <label for="opt-max-per-user" data-i18n="label_max_per_user">Máximo por usuario</label>
                         <select id="opt-max-per-user">
-                            <option value="1" selected>1 (sin duplicados)</option>
-                            <option value="2">2 por usuario</option>
-                            <option value="3">3 por usuario</option>
-                            <option value="5">5 por usuario</option>
-                            <option value="0">Sin límite</option>
+                            <option value="1" selected data-i18n="opt_1_no_dup">1 (sin duplicados)</option>
+                            <option value="2" data-i18n="opt_2_per">2 por usuario</option>
+                            <option value="3" data-i18n="opt_3_per">3 por usuario</option>
+                            <option value="5" data-i18n="opt_5_per">5 por usuario</option>
+                            <option value="0" data-i18n="opt_unlimited">Sin límite</option>
                         </select>
                     </div>
                     <label class="check-row">
                         <input type="checkbox" id="opt-replies">
-                        <span>Incluir respuestas</span>
+                        <span data-i18n="check_replies">Incluir respuestas</span>
                     </label>
 
                     <div class="divider"></div>
-                    <div class="section-label">Filtros avanzados</div>
+                    <div class="section-label" data-i18n="section_advanced">Filtros avanzados</div>
 
                     <div class="options-row-2">
                         <div class="field">
-                            <label for="opt-date-from">Comentarios desde</label>
+                            <label for="opt-date-from" data-i18n="label_date_from">Comentarios desde</label>
                             <input type="date" id="opt-date-from">
                         </div>
                         <div class="field">
-                            <label for="opt-date-to">Comentarios hasta</label>
+                            <label for="opt-date-to" data-i18n="label_date_to">Comentarios hasta</label>
                             <input type="date" id="opt-date-to">
                         </div>
                     </div>
 
                     <div class="field">
-                        <label for="opt-min-likes">Mínimo de likes en el comentario</label>
-                        <input type="number" id="opt-min-likes" value="0" min="0" placeholder="0 = sin filtro">
+                        <label for="opt-min-likes" data-i18n="label_min_likes">Mínimo de likes en el comentario</label>
+                        <input type="number" id="opt-min-likes" value="0" min="0" placeholder="0 = sin filtro" data-i18n-placeholder="placeholder_min_likes">
                     </div>
 
                     <div class="field">
-                        <label for="opt-exclude">Excluir usuarios (uno por línea, sin @)</label>
-                        <textarea id="opt-exclude" rows="3" placeholder="canal_dueño&#10;moderador1&#10;mi_cuenta" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:10px 12px;font-size:14px;font-family:inherit;width:100%;outline:none;resize:vertical"></textarea>
+                        <label for="opt-exclude" data-i18n="label_exclude">Excluir usuarios (uno por línea, sin @)</label>
+                        <textarea id="opt-exclude" rows="3" placeholder="canal_dueño&#10;moderador1&#10;mi_cuenta" data-i18n-placeholder="placeholder_exclude" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:10px 12px;font-size:14px;font-family:inherit;width:100%;outline:none;resize:vertical"></textarea>
                         <div id="exclude-hint" style="display:none;font-size:12px;color:var(--success);margin-top:4px"></div>
                     </div>
 
                     <div class="field">
-                        <label for="opt-backups">Ganadores suplentes</label>
+                        <label for="opt-backups" data-i18n="label_backups">Ganadores suplentes</label>
                         <input type="number" id="opt-backups" value="0" min="0" max="20">
                     </div>
 
@@ -681,14 +738,14 @@ footer a:hover { color: var(--text); }
 
                     <label class="check-row check-row-festejo">
                         <input type="checkbox" id="opt-festejo">
-                        <span>🎉 Modo festejo — dados al sortear y serpentinas con los resultados</span>
+                        <span data-i18n="check_festejo">🎉 Modo festejo — dados al sortear y serpentinas con los resultados</span>
                     </label>
                 </div>
             </div>
 
             <div id="form-error"></div>
 
-            <button class="btn btn-primary" id="btn-buscar">
+            <button class="btn btn-primary" id="btn-buscar" data-i18n="btn_search">
                 Buscar comentarios
             </button>
         </div>
@@ -700,14 +757,14 @@ footer a:hover { color: var(--text); }
                     <div class="video-thumb-placeholder" id="fetch-thumb-ph">▶</div>
                     <img class="video-thumb" id="fetch-thumb" src="" alt="" style="display:none">
                     <div class="video-info">
-                        <div class="video-title" id="fetch-title">Obteniendo información...</div>
+                        <div class="video-title" id="fetch-title" data-i18n="fetch_getting_info">Obteniendo información...</div>
                         <div class="video-meta" id="fetch-meta"></div>
                     </div>
                 </div>
 
                 <div class="progress-wrap">
                     <div class="progress-label">
-                        <span id="fetch-count">Conectando...</span>
+                        <span id="fetch-count" data-i18n="fetch_connecting">Conectando...</span>
                         <span id="fetch-pct"></span>
                     </div>
                     <div class="progress-bar-bg">
@@ -717,7 +774,7 @@ footer a:hover { color: var(--text); }
                 </div>
             </div>
 
-            <button class="btn btn-ghost" onclick="cancelFetch()">Cancelar y volver</button>
+            <button class="btn btn-ghost" onclick="cancelFetch()" data-i18n="btn_cancel">Cancelar y volver</button>
         </div>
 
         <!-- ── Estado 3: Listo para sortear ─────────────────────────────────── -->
@@ -737,11 +794,11 @@ footer a:hover { color: var(--text); }
 
             <div id="ready-error"></div>
 
-            <button class="btn btn-success" id="btn-sortear">
+            <button class="btn btn-success" id="btn-sortear" data-i18n="btn_draw">
                 🎰 ¡Sortear!
             </button>
 
-            <a href="?" class="btn btn-ghost" style="text-align:center">← Nuevo sorteo</a>
+            <a href="?" class="btn btn-ghost" style="text-align:center" data-i18n="btn_new_giveaway">← Nuevo sorteo</a>
         </div>
 
         <!-- ── Estado 4: Ganadores ───────────────────────────────────────────── -->
@@ -749,7 +806,7 @@ footer a:hover { color: var(--text); }
             <div class="card">
                 <div class="winners-header">
                     <span class="trophy">🎉</span>
-                    <h2>Ganadores del sorteo</h2>
+                    <h2 data-i18n="title_winners_multiple">Ganadores del sorteo</h2>
                     <div class="video-name" id="w-video-name"></div>
                 </div>
                 <div id="winners-list"></div>
@@ -757,11 +814,11 @@ footer a:hover { color: var(--text); }
 
             <div class="actions-row">
                 <div class="actions-row-h">
-                    <button class="btn btn-success" id="btn-resortear">🔄 Sortear de nuevo</button>
-                    <button class="btn btn-ghost" id="btn-share">Compartir</button>
+                    <button class="btn btn-success" id="btn-resortear" data-i18n="btn_redraw">🔄 Sortear de nuevo</button>
+                    <button class="btn btn-ghost" id="btn-share" data-i18n="btn_share">Compartir</button>
                 </div>
-                <a class="btn btn-ghost" id="btn-cert" href="#" target="_blank">📄 Certificado PDF</a>
-                <a href="?" class="btn btn-ghost" style="text-align:center">← Nuevo sorteo</a>
+                <a class="btn btn-ghost" id="btn-cert" href="#" target="_blank" data-i18n="btn_cert">📄 Certificado PDF</a>
+                <a href="?" class="btn btn-ghost" style="text-align:center" data-i18n="btn_new_giveaway">← Nuevo sorteo</a>
             </div>
         </div>
 
@@ -771,13 +828,13 @@ footer a:hover { color: var(--text); }
                 <span class="error-icon">⚠</span>
                 <span id="error-msg">Ocurrió un error.</span>
             </div>
-            <a href="?" class="btn btn-ghost" style="text-align:center">← Volver</a>
+            <a href="?" class="btn btn-ghost" style="text-align:center" data-i18n="btn_back">← Volver</a>
         </div>
 
     </main>
 
     <footer>
-        <a href="https://mammoli.ar">mammoli.ar</a> · Sorteador de YouTube v1.0
+        <a href="https://mammoli.ar">mammoli.ar</a> · <span data-i18n="footer_brand">Sorteador de YouTube</span> v2.0
     </footer>
 </div>
 
@@ -788,20 +845,226 @@ footer a:hover { color: var(--text); }
         <span class="die">⚂</span>
         <span class="die">⚅</span>
     </div>
-    <div id="dice-msg">Sorteando<span id="dice-dots">...</span></div>
+    <div id="dice-msg"><span id="dice-msg-text" data-i18n="dice_msg">Sorteando</span><span id="dice-dots">...</span></div>
 </div>
 
 <!-- Toast cafecito -->
 <div id="toast">
-    ☕ ¿Te resultó útil?
-    <a href="https://cafecito.app/mammoli" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600;margin-left:4px;">
-        Invitame un cafecito
-    </a>
+    <span data-i18n="toast_msg">☕ ¿Te resultó útil?</span>
+    <a href="https://cafecito.app/mammoli" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600;margin-left:4px;" data-i18n="toast_link">Invitame un cafecito</a>
 </div>
 
 <script>
 (function() {
 'use strict';
+
+// ── Traducciones ──────────────────────────────────────────────────────────────
+var LANGS = {
+  es: {
+    label_url:           'URL del video de YouTube',
+    placeholder_url:     'https://www.youtube.com/watch?v=...',
+    btn_add_video:       '+ Agregar otro video',
+    section_options:     'Opciones del sorteo',
+    label_winners:       'Ganadores',
+    label_max_comments:  'Límite comentarios',
+    opt_unlimited:       'Sin límite',
+    label_keyword:       'Filtrar por palabra clave',
+    placeholder_keyword: 'Ej: #participo (opcional)',
+    label_max_per_user:  'Máximo por usuario',
+    opt_1_no_dup:        '1 (sin duplicados)',
+    opt_2_per:           '2 por usuario',
+    opt_3_per:           '3 por usuario',
+    opt_5_per:           '5 por usuario',
+    check_replies:       'Incluir respuestas',
+    section_advanced:    'Filtros avanzados',
+    label_date_from:     'Comentarios desde',
+    label_date_to:       'Comentarios hasta',
+    label_min_likes:     'Mínimo de likes en el comentario',
+    placeholder_min_likes:'0 = sin filtro',
+    label_exclude:       'Excluir usuarios (uno por línea, sin @)',
+    placeholder_exclude: 'canal_dueño\nmoderador1\nmi_cuenta',
+    label_backups:       'Ganadores suplentes',
+    check_festejo:       '🎉 Modo festejo — dados al sortear y serpentinas con los resultados',
+    btn_search:          'Buscar comentarios',
+    fetch_getting_info:  'Obteniendo información...',
+    fetch_connecting:    'Conectando...',
+    btn_cancel:          'Cancelar y volver',
+    btn_draw:            '🎰 ¡Sortear!',
+    btn_new_giveaway:    '← Nuevo sorteo',
+    btn_back:            '← Volver',
+    title_winner_single:   'Ganador del sorteo',
+    title_winners_multiple:'Ganadores del sorteo',
+    btn_redraw:          '🔄 Sortear de nuevo',
+    btn_share:           'Compartir',
+    btn_share_copied:    '✓ ¡Copiado!',
+    btn_cert:            '📄 Certificado PDF',
+    dice_msg:            'Sorteando',
+    footer_brand:        'Sorteador de YouTube',
+    toast_msg:           '☕ ¿Te resultó útil?',
+    toast_link:          'Invitame un cafecito',
+    // dinámicas
+    chip_downloaded:     '{0} descargados',
+    chip_filter:         'Filtro: {0}',
+    chip_1_per_user:     '1 por usuario',
+    chip_n_per_user:     '{0} por usuario',
+    chip_winners_count:  '{0} ganador(es)',
+    fetch_video_n_of_m:  'Video {0} de {1} — conectando...',
+    fetch_downloading:   'Descargando... {0} / {1}',
+    fetch_downloading_unk:'Descargando... {0} comentarios',
+    fetch_comments_total:'{0} comentarios en el video',
+    fetch_limit_note:    'Límite: {0} de ~{1} disponibles',
+    backups_section:     'Suplentes',
+    badge_backup:        'Suplente',
+    winner_view_comment: 'Ver comentario en YouTube ↗',
+    winner_copy_mention: '📋 Copiar mención',
+    winner_copied:       '✓ Copiado',
+    mention_single:      '¡Felicitaciones! Sos el ganador del sorteo 🏆',
+    mention_multiple:    '¡Felicitaciones! Sos uno de los ganadores del sorteo 🎉',
+    hint_channel_owner:  '✓ Dueño del canal agregado automáticamente',
+    btn_drawing:         'Sorteando...',
+    btn_creating:        'Creando sorteo...',
+    btn_redrawing:       'Sorteando...',
+    // errores
+    err_no_url:          'Ingresá al menos una URL de YouTube.',
+    err_winners_range:   'La cantidad de ganadores debe ser entre 1 y 100.',
+    err_create_fail:     'No se pudo crear el sorteo. Revisá tu conexión.',
+    err_conn_lost:       'Se perdió la conexión. Recargá la página para reintentar.',
+    err_load_fail:       'Error al cargar el sorteo.',
+    err_sort_fail:       'No se pudo sortear. Revisá tu conexión.',
+    err_download_fail:   'Error al descargar comentarios.',
+    video_fallback_title:'Video de YouTube',
+    prompt_copy_mention: 'Copiá esta mención:',
+    prompt_copy_link:    'Copiá este enlace:',
+  },
+  en: {
+    label_url:           'YouTube Video URL',
+    placeholder_url:     'https://www.youtube.com/watch?v=...',
+    btn_add_video:       '+ Add another video',
+    section_options:     'Giveaway Options',
+    label_winners:       'Winners',
+    label_max_comments:  'Comment Limit',
+    opt_unlimited:       'No limit',
+    label_keyword:       'Filter by keyword',
+    placeholder_keyword: 'E.g.: #enter (optional)',
+    label_max_per_user:  'Max per user',
+    opt_1_no_dup:        '1 (no duplicates)',
+    opt_2_per:           '2 per user',
+    opt_3_per:           '3 per user',
+    opt_5_per:           '5 per user',
+    check_replies:       'Include replies',
+    section_advanced:    'Advanced Filters',
+    label_date_from:     'Comments from',
+    label_date_to:       'Comments until',
+    label_min_likes:     'Minimum likes on comment',
+    placeholder_min_likes:'0 = no filter',
+    label_exclude:       'Exclude users (one per line, no @)',
+    placeholder_exclude: 'channel_owner\nmoderator1\nmy_account',
+    label_backups:       'Backup Winners',
+    check_festejo:       '🎉 Party mode — dice during draw and confetti with results',
+    btn_search:          'Search Comments',
+    fetch_getting_info:  'Getting information...',
+    fetch_connecting:    'Connecting...',
+    btn_cancel:          'Cancel and go back',
+    btn_draw:            '🎰 Draw!',
+    btn_new_giveaway:    '← New Giveaway',
+    btn_back:            '← Back',
+    title_winner_single:   'Giveaway Winner',
+    title_winners_multiple:'Giveaway Winners',
+    btn_redraw:          '🔄 Draw Again',
+    btn_share:           'Share',
+    btn_share_copied:    '✓ Copied!',
+    btn_cert:            '📄 PDF Certificate',
+    dice_msg:            'Drawing',
+    footer_brand:        'YouTube Comment Picker',
+    toast_msg:           '☕ Found it useful?',
+    toast_link:          'Buy me a coffee',
+    // dynamic
+    chip_downloaded:     '{0} downloaded',
+    chip_filter:         'Filter: {0}',
+    chip_1_per_user:     '1 per user',
+    chip_n_per_user:     '{0} per user',
+    chip_winners_count:  '{0} winner(s)',
+    fetch_video_n_of_m:  'Video {0} of {1} — connecting...',
+    fetch_downloading:   'Downloading... {0} / {1}',
+    fetch_downloading_unk:'Downloading... {0} comments',
+    fetch_comments_total:'{0} comments on the video',
+    fetch_limit_note:    'Limit: {0} of ~{1} available',
+    backups_section:     'Backup Winners',
+    badge_backup:        'Backup',
+    winner_view_comment: 'View comment on YouTube ↗',
+    winner_copy_mention: '📋 Copy mention',
+    winner_copied:       '✓ Copied',
+    mention_single:      'Congratulations! You\'re the giveaway winner 🏆',
+    mention_multiple:    'Congratulations! You\'re one of the giveaway winners 🎉',
+    hint_channel_owner:  '✓ Channel owner added automatically',
+    btn_drawing:         'Drawing...',
+    btn_creating:        'Creating giveaway...',
+    btn_redrawing:       'Drawing...',
+    // errors
+    err_no_url:          'Enter at least one YouTube URL.',
+    err_winners_range:   'Number of winners must be between 1 and 100.',
+    err_create_fail:     'Could not create the giveaway. Check your connection.',
+    err_conn_lost:       'Connection lost. Reload the page to retry.',
+    err_load_fail:       'Error loading giveaway.',
+    err_sort_fail:       'Could not draw. Check your connection.',
+    err_download_fail:   'Error downloading comments.',
+    video_fallback_title:'YouTube Video',
+    prompt_copy_mention: 'Copy this mention:',
+    prompt_copy_link:    'Copy this link:',
+  }
+};
+
+var currentLang  = localStorage.getItem('sorteo_lang')  || 'es';
+var currentTheme = localStorage.getItem('sorteo_theme') || 'dark';
+
+function t(key) {
+    return (LANGS[currentLang] || LANGS.es)[key] || key;
+}
+function tf(key /*, args... */) {
+    var s    = t(key);
+    var args = Array.prototype.slice.call(arguments, 1);
+    return s.replace(/\{(\d+)\}/g, function(_, i) {
+        return args[+i] !== undefined ? String(args[+i]) : '';
+    });
+}
+
+function applyTheme(theme) {
+    currentTheme = theme;
+    localStorage.setItem('sorteo_theme', theme);
+    document.documentElement.classList.toggle('theme-light', theme === 'light');
+    document.getElementById('btn-theme').textContent = theme === 'light' ? '🌙' : '☀️';
+}
+
+function applyLang(lang) {
+    currentLang = lang;
+    localStorage.setItem('sorteo_lang', lang);
+    document.documentElement.lang = lang;
+    document.getElementById('btn-lang').textContent = lang === 'es' ? 'EN' : 'ES';
+
+    // Elementos con data-i18n (textContent)
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        el.textContent = t(el.dataset.i18n);
+    });
+    // Elementos con data-i18n-placeholder
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+        el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+
+    // Re-renderizar estado actual si hay datos
+    var activeState = document.querySelector('.state.active');
+    var sid = activeState ? activeState.id : '';
+    if (sid === 'state-winners' && currentData) {
+        renderWinnersList(
+            currentData.winners || [],
+            currentData.backups || [],
+            currentData.video_id || '',
+            currentData.video_title || ''
+        );
+    }
+    if (sid === 'state-ready' && currentData) {
+        renderReady(currentData, currentData.total_fetched || 0);
+    }
+}
 
 // ── Estado de la app ──────────────────────────────────────────────────────────
 let currentId   = null;
@@ -918,11 +1181,23 @@ function escHtml(s) {
 }
 
 function fmtNum(n) {
-    return Number(n).toLocaleString('es-AR');
+    return Number(n).toLocaleString(currentLang === 'en' ? 'en-US' : 'es-AR');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 var initId = <?= $js_init_id ?>;
+
+// Aplicar tema e idioma persistidos
+applyTheme(currentTheme);
+applyLang(currentLang);
+
+// Wiring controles de idioma y tema
+document.getElementById('btn-lang').addEventListener('click', function() {
+    applyLang(currentLang === 'es' ? 'en' : 'es');
+});
+document.getElementById('btn-theme').addEventListener('click', function() {
+    applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
 
 if (initId) {
     currentId = initId;
@@ -987,7 +1262,7 @@ function startSorteo() {
         .map(function(i) { return i.value.trim(); })
         .filter(Boolean);
     if (!videoUrls.length) {
-        showInlineError('form-error', 'Ingresá al menos una URL de YouTube.');
+        showInlineError('form-error', t('err_no_url'));
         return;
     }
     var winners    = parseInt(document.getElementById('opt-winners').value, 10);
@@ -1003,7 +1278,7 @@ function startSorteo() {
     var numBackups = parseInt(document.getElementById('opt-backups').value, 10) || 0;
 
     if (isNaN(winners) || winners < 1 || winners > 100) {
-        showInlineError('form-error', 'La cantidad de ganadores debe ser entre 1 y 100.');
+        showInlineError('form-error', t('err_winners_range'));
         return;
     }
 
@@ -1011,7 +1286,7 @@ function startSorteo() {
 
     var btn = document.getElementById('btn-buscar');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Creando sorteo...';
+    btn.innerHTML = '<span class="spinner"></span> ' + t('btn_creating');
 
     fetch('api.php?action=create', {
         method: 'POST',
@@ -1033,7 +1308,7 @@ function startSorteo() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         btn.disabled = false;
-        btn.innerHTML = 'Buscar comentarios';
+        btn.innerHTML = t('btn_search');
         if (data.error) {
             showInlineError('form-error', data.error);
             return;
@@ -1045,7 +1320,7 @@ function startSorteo() {
                 excl.value = data.channel_owner;
                 var hint = document.getElementById('exclude-hint');
                 if (hint) {
-                    hint.textContent = '✓ Dueño del canal agregado automáticamente';
+                    hint.textContent = t('hint_channel_owner');
                     hint.style.display = 'block';
                     setTimeout(function() { hint.style.display = 'none'; }, 4000);
                 }
@@ -1058,8 +1333,8 @@ function startSorteo() {
     })
     .catch(function() {
         btn.disabled = false;
-        btn.innerHTML = 'Buscar comentarios';
-        showInlineError('form-error', 'No se pudo crear el sorteo. Revisá tu conexión.');
+        btn.innerHTML = t('btn_search');
+        showInlineError('form-error', t('err_create_fail'));
     });
 }
 
@@ -1067,9 +1342,9 @@ function startSorteo() {
 function showFetchingUI() {
     showState('fetching');
     // Resetear
-    document.getElementById('fetch-title').textContent = 'Obteniendo información...';
+    document.getElementById('fetch-title').textContent = t('fetch_getting_info');
     document.getElementById('fetch-meta').textContent = '';
-    document.getElementById('fetch-count').textContent = 'Conectando...';
+    document.getElementById('fetch-count').textContent = t('fetch_connecting');
     document.getElementById('fetch-pct').textContent = '';
     document.getElementById('fetch-note').style.display = 'none';
     var bar = document.getElementById('fetch-bar');
@@ -1095,8 +1370,8 @@ function openSSE(id) {
         if (msg.type === 'video_start') {
             document.getElementById('fetch-count').textContent =
                 msg.total > 1
-                    ? 'Video ' + (msg.index + 1) + ' de ' + msg.total + ' — conectando...'
-                    : 'Conectando...';
+                    ? tf('fetch_video_n_of_m', msg.index + 1, msg.total)
+                    : t('fetch_connecting');
             return;
         }
 
@@ -1114,7 +1389,7 @@ function openSSE(id) {
                         renderReady(data, data.total_fetched);
                     }
                 })
-                .catch(function() { showError('Error al cargar el sorteo.'); });
+                .catch(function() { showError(t('err_load_fail')); });
             return;
         }
 
@@ -1123,7 +1398,7 @@ function openSSE(id) {
             commentCount = msg.comment_count;
             maxComments  = msg.max;
             document.getElementById('fetch-meta').textContent =
-                fmtNum(msg.comment_count) + ' comentarios en el video';
+                tf('fetch_comments_total', fmtNum(msg.comment_count));
 
             if (msg.thumb) {
                 var img = document.getElementById('fetch-thumb');
@@ -1135,8 +1410,7 @@ function openSSE(id) {
             if (maxComments < commentCount) {
                 var note = document.getElementById('fetch-note');
                 note.style.display = 'block';
-                note.textContent = 'Límite: ' + fmtNum(maxComments) +
-                    ' de ~' + fmtNum(commentCount) + ' disponibles';
+                note.textContent = tf('fetch_limit_note', fmtNum(maxComments), fmtNum(commentCount));
             }
 
             document.getElementById('fetch-bar').classList.remove('indeterminate');
@@ -1162,7 +1436,6 @@ function openSSE(id) {
                     renderReady(data, msg.total);
                 })
                 .catch(function() {
-                    // Fallback sin thumb
                     renderReady({ video_id: id, options: {} }, msg.total);
                 });
             return;
@@ -1171,7 +1444,7 @@ function openSSE(id) {
         if (msg.type === 'error') {
             eventSource.close();
             eventSource = null;
-            showError(msg.msg || 'Error al descargar comentarios.');
+            showError(msg.msg || t('err_download_fail'));
             return;
         }
     };
@@ -1181,7 +1454,7 @@ function openSSE(id) {
             eventSource.close();
             eventSource = null;
         }
-        showError('Se perdió la conexión con el servidor. Recargá la página para reintentar.');
+        showError(t('err_conn_lost'));
     };
 }
 
@@ -1194,11 +1467,11 @@ function updateProgress(loaded, max) {
         var p = Math.min(100, Math.round(loaded / max * 100));
         bar.style.width = p + '%';
         pct.textContent = p + '%';
-        count.textContent = 'Descargando... ' + fmtNum(loaded) + ' / ' + fmtNum(max);
+        count.textContent = tf('fetch_downloading', fmtNum(loaded), fmtNum(max));
     } else {
         bar.style.width = '60%';
         pct.textContent = '';
-        count.textContent = 'Descargando... ' + fmtNum(loaded) + ' comentarios';
+        count.textContent = tf('fetch_downloading_unk', fmtNum(loaded));
     }
 }
 
@@ -1227,25 +1500,25 @@ function renderReady(data, total) {
     }
 
     document.getElementById('ready-title').textContent =
-        data.video_title || 'Video de YouTube';
+        data.video_title || t('video_fallback_title');
 
     var metaParts = [];
     if (data.video_comment_count) {
-        metaParts.push(fmtNum(data.video_comment_count) + ' comentarios totales');
+        metaParts.push(tf('fetch_comments_total', fmtNum(data.video_comment_count)));
     }
     document.getElementById('ready-meta').textContent = metaParts.join(' · ');
 
     // Stats chips
-    var chips = '';
-    chips += '<div class="stat-chip"><strong>' + fmtNum(total) + '</strong> descargados</div>';
-    if (opts.keyword) {
-        chips += '<div class="stat-chip">Filtro: <strong>' + escHtml(opts.keyword) + '</strong></div>';
-    }
     var maxPU = opts.max_per_user !== undefined ? opts.max_per_user : (opts.unique_users ? 1 : 0);
-    if (maxPU > 0) {
-        chips += '<div class="stat-chip">' + (maxPU === 1 ? '1 por usuario' : 'Máx ' + maxPU + ' por usuario') + '</div>';
+    var chips = '';
+    chips += '<div class="stat-chip">' + tf('chip_downloaded', '<strong>' + fmtNum(total) + '</strong>') + '</div>';
+    if (opts.keyword) {
+        chips += '<div class="stat-chip">' + tf('chip_filter', '<strong>' + escHtml(opts.keyword) + '</strong>') + '</div>';
     }
-    chips += '<div class="stat-chip"><strong>' + (opts.num_winners || 1) + '</strong> ganador(es)</div>';
+    if (maxPU > 0) {
+        chips += '<div class="stat-chip">' + (maxPU === 1 ? t('chip_1_per_user') : tf('chip_n_per_user', maxPU)) + '</div>';
+    }
+    chips += '<div class="stat-chip">' + tf('chip_winners_count', '<strong>' + (opts.num_winners || 1) + '</strong>') + '</div>';
     document.getElementById('ready-stats').innerHTML = chips;
 
     showInlineError('ready-error', '');
@@ -1264,7 +1537,7 @@ function doSortear() {
     if (festejoMode) {
         showDice();
     } else {
-        btn.innerHTML = '<span class="spinner"></span> Sorteando...';
+        btn.innerHTML = '<span class="spinner"></span> ' + t('btn_drawing');
     }
 
     fetch('api.php?action=sortear', {
@@ -1278,14 +1551,14 @@ function doSortear() {
             setTimeout(function() {
                 hideDice();
                 btn.disabled = false;
-                btn.innerHTML = '🎰 ¡Sortear!';
+                btn.innerHTML = t('btn_draw');
                 if (data.error) { showInlineError('ready-error', data.error); return; }
                 renderWinnersFromResult(data);
                 launchConfetti();
             }, 900);
         } else {
             btn.disabled = false;
-            btn.innerHTML = '🎰 ¡Sortear!';
+            btn.innerHTML = t('btn_draw');
             if (data.error) { showInlineError('ready-error', data.error); return; }
             renderWinnersFromResult(data);
         }
@@ -1293,8 +1566,8 @@ function doSortear() {
     .catch(function() {
         hideDice();
         btn.disabled = false;
-        btn.innerHTML = '🎰 ¡Sortear!';
-        showInlineError('ready-error', 'No se pudo sortear. Revisá tu conexión.');
+        btn.innerHTML = t('btn_draw');
+        showInlineError('ready-error', t('err_sort_fail'));
     });
 }
 
@@ -1307,7 +1580,7 @@ document.getElementById('btn-resortear').addEventListener('click', function() {
     if (festejoMode) {
         showDice();
     } else {
-        btn.innerHTML = '<span class="spinner"></span> Sorteando...';
+        btn.innerHTML = '<span class="spinner"></span> ' + t('btn_redrawing');
     }
 
     fetch('api.php?action=sortear', {
@@ -1321,14 +1594,14 @@ document.getElementById('btn-resortear').addEventListener('click', function() {
             setTimeout(function() {
                 hideDice();
                 btn.disabled = false;
-                btn.innerHTML = '🔄 Sortear de nuevo';
+                btn.innerHTML = t('btn_redraw');
                 if (data.error) { showError(data.error); return; }
                 renderWinnersFromResult(data);
                 launchConfetti();
             }, 900);
         } else {
             btn.disabled = false;
-            btn.innerHTML = '🔄 Sortear de nuevo';
+            btn.innerHTML = t('btn_redraw');
             if (data.error) { showError(data.error); return; }
             renderWinnersFromResult(data);
         }
@@ -1336,8 +1609,8 @@ document.getElementById('btn-resortear').addEventListener('click', function() {
     .catch(function() {
         hideDice();
         btn.disabled = false;
-        btn.innerHTML = '🔄 Sortear de nuevo';
-        showError('No se pudo sortear. Revisá tu conexión.');
+        btn.innerHTML = t('btn_redraw');
+        showError(t('err_sort_fail'));
     });
 });
 
@@ -1361,7 +1634,7 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
     var single = winners.length === 1;
 
     document.querySelector('#state-winners .winners-header h2').textContent =
-        single ? 'Ganador del sorteo' : 'Ganadores del sorteo';
+        single ? t('title_winner_single') : t('title_winners_multiple');
     document.querySelector('#state-winners .trophy').textContent =
         single ? '🏆' : '🎉';
 
@@ -1386,9 +1659,7 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
         var ytLink = 'https://www.youtube.com/watch?v=' +
             encodeURIComponent(vidForLink) + '&lc=' + encodeURIComponent(baseCommentId);
 
-        var mention = single
-            ? '@' + w.author + ' ¡Felicitaciones! Sos el ganador del sorteo 🏆'
-            : '@' + w.author + ' ¡Felicitaciones! Sos uno de los ganadores del sorteo 🎉';
+        var mention = '@' + w.author + ' ' + (single ? t('mention_single') : t('mention_multiple'));
 
         html += '<div class="winner-item">';
         html += '<div class="winner-pos ' + posClass + '">' + posLabel + '</div>';
@@ -1402,16 +1673,16 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
         }
         html += '<div class="winner-actions">';
         html += '<a class="winner-link" href="' + escHtml(ytLink) +
-            '" target="_blank" rel="noopener">Ver comentario ↗</a>';
+            '" target="_blank" rel="noopener">' + t('winner_view_comment') + '</a>';
         html += '<button class="winner-copy-btn" data-mention="' + escHtml(mention) +
-            '" title="Copiar mención para notificar al ganador">📋 Copiar mención</button>';
+            '" title="' + t('winner_copy_mention') + '">' + t('winner_copy_mention') + '</button>';
         html += '</div>';
         html += '</div></div>';
     });
 
     if (backups && backups.length > 0) {
         html += '<div class="backup-section">';
-        html += '<div style="font-size:12px;color:var(--muted);text-align:center;padding:10px 0;border-top:1px dashed var(--border);margin-top:8px">Suplentes</div>';
+        html += '<div style="font-size:12px;color:var(--muted);text-align:center;padding:10px 0;border-top:1px dashed var(--border);margin-top:8px">' + t('backups_section') + '</div>';
         backups.forEach(function(w, i) {
             var pos         = w.position || (i + 1);
             var commentText = w.text || '';
@@ -1419,21 +1690,21 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
             var baseCommentId = w.comment_id ? w.comment_id.split('.')[0] : '';
             var ytLink = 'https://www.youtube.com/watch?v=' +
                 encodeURIComponent(videoId) + '&lc=' + encodeURIComponent(baseCommentId);
-            var mention = '@' + w.author + ' ¡Felicitaciones! Sos el suplente #' + pos + ' del sorteo';
+            var mention = '@' + w.author + ' ' + t('mention_multiple');
 
             html += '<div class="winner-item is-backup">';
             html += '<div class="winner-pos">#' + pos + '</div>';
             html += '<div class="winner-body">';
             html += '<div class="winner-author">@' + escHtml(w.author) +
-                '<span class="backup-badge">Suplente</span></div>';
+                '<span class="backup-badge">' + t('badge_backup') + '</span></div>';
             if (commentText) {
                 html += '<div class="winner-comment">' + escHtml(commentText) + '</div>';
             }
             html += '<div class="winner-actions">';
             html += '<a class="winner-link" href="' + escHtml(ytLink) +
-                '" target="_blank" rel="noopener">Ver comentario ↗</a>';
+                '" target="_blank" rel="noopener">' + t('winner_view_comment') + '</a>';
             html += '<button class="winner-copy-btn" data-mention="' + escHtml(mention) +
-                '" title="Copiar mención para notificar al suplente">📋 Copiar mención</button>';
+                '" title="' + t('winner_copy_mention') + '">' + t('winner_copy_mention') + '</button>';
             html += '</div>';
             html += '</div></div>';
         });
@@ -1448,10 +1719,10 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
             var text = btn.dataset.mention;
             navigator.clipboard.writeText(text).then(function() {
                 var orig = btn.innerHTML;
-                btn.innerHTML = '✓ Copiado';
+                btn.innerHTML = t('winner_copied');
                 btn.classList.add('copy-ok');
                 setTimeout(function() { btn.innerHTML = orig; btn.classList.remove('copy-ok'); }, 2000);
-            }).catch(function() { prompt('Copiá esta mención:', text); });
+            }).catch(function() { prompt(t('prompt_copy_mention'), text); });
         });
     });
 
@@ -1466,7 +1737,7 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
         });
     }
 
-    document.getElementById('btn-cert').href = 'certificate.php?v=' + encodeURIComponent(currentId);
+    document.getElementById('btn-cert').href = 'certificate.php?v=' + encodeURIComponent(currentId) + '&lang=' + currentLang;
 }
 
 // ── Compartir ─────────────────────────────────────────────────────────────────
@@ -1477,17 +1748,17 @@ document.getElementById('btn-share').addEventListener('click', function() {
         navigator.clipboard.writeText(url).then(function() {
             var btn = document.getElementById('btn-share');
             var orig = btn.innerHTML;
-            btn.innerHTML = '✓ ¡Copiado!';
+            btn.innerHTML = t('btn_share_copied');
             btn.classList.add('copy-ok');
             setTimeout(function() {
                 btn.innerHTML = orig;
                 btn.classList.remove('copy-ok');
             }, 2000);
         }).catch(function() {
-            prompt('Copiá este enlace:', url);
+            prompt(t('prompt_copy_link'), url);
         });
     } else {
-        prompt('Copiá este enlace:', url);
+        prompt(t('prompt_copy_link'), url);
     }
 });
 
