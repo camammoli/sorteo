@@ -910,9 +910,12 @@ footer a:hover { color: var(--text); }
         <a href="https://cafecito.app/mammoli" class="footer-cafecito" target="_blank" rel="noopener" data-i18n="footer_cafecito">☕ Invitame un cafecito</a>
         <div class="footer-meta">
             <a href="https://mammoli.ar">mammoli.ar</a>
-            · <span data-i18n="footer_brand">Sorteador de YouTube</span> v2.0
+            · <span data-i18n="footer_brand">Sorteador de YouTube</span> v2.2
             · <a href="verificar.php" data-i18n="footer_verify">Verificar certificado</a>
             · <a href="stats.php" data-i18n="footer_stats">Estadísticas</a>
+        </div>
+        <div class="footer-meta" style="margin-top:4px;font-size:.72rem">
+            Hecho con ☕ y ❤️ en Mendoza, Argentina · Desarrollado por <a href="https://mammoli.ar">Carlos Ariel Mammoli</a>
         </div>
     </footer>
 </div>

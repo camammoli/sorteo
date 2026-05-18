@@ -154,8 +154,8 @@ footer a { color: var(--muted); }
 
 <footer>
   <a href="/sorteo/">← Volver al sorteador</a>
-  · <a href="https://mammoli.ar">mammoli.ar</a>
-  · Desarrollado por <a href="https://mammoli.ar">Carlos Mammoli</a>
+  · <a href="https://mammoli.ar">mammoli.ar</a><br>
+  Hecho con ☕ y ❤️ en Mendoza, Argentina · Desarrollado por <a href="https://mammoli.ar">Carlos Ariel Mammoli</a>
 </footer>
 
 </body>
