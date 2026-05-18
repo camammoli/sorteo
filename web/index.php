@@ -1,9 +1,17 @@
 <?php
 // index.php — Sorteador de YouTube
 
+require_once __DIR__ . '/db.php';
+
 $page_title = 'Sorteador de YouTube — Sorteos de comentarios sin apps';
 $og_desc    = 'Sorteá ganadores entre los comentarios de cualquier video de YouTube. Sin apps, sin registro.';
 $canonical  = 'https://mammoli.ar/sorteo/';
+
+// Contador público de sorteos realizados
+$total_sorteos_done = 0;
+try {
+    $total_sorteos_done = (int)get_db()->query("SELECT COUNT(*) FROM sorteos WHERE status = 'done'")->fetchColumn();
+} catch (\Throwable $e) {}
 
 // Si viene con ?v= lo incluimos en el canonical
 $init_id = trim($_GET['v'] ?? '');
@@ -667,6 +675,12 @@ footer a:hover { color: var(--text); }
     letter-spacing: .03em;
 }
 .ctrl-btn:hover { background: rgba(255,255,255,.22); }
+.header-sorteos-count {
+    font-size: 11px;
+    color: rgba(255,255,255,.45);
+    margin-top: 2px;
+    letter-spacing: .02em;
+}
 </style>
 </head>
 <body>
@@ -687,6 +701,9 @@ footer a:hover { color: var(--text); }
                         <h1><span class="yt-wordmark">YouTube</span><span class="header-picker-name" data-i18n="header_picker"> Sorteador</span></h1>
                     </div>
                     <div class="header-tagline" data-i18n="header_tagline">Sin apps · sin registro</div>
+                    <?php if ($total_sorteos_done > 0): ?>
+                    <div class="header-sorteos-count"><?= number_format($total_sorteos_done) ?> sorteos realizados</div>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="header-controls">
@@ -1850,6 +1867,15 @@ if (!sessionStorage.getItem('toast_shown')) {
 }
 
 })();
+</script>
+<script>
+// Detectar zona horaria del navegador y guardarla en cookie para PHP
+try {
+    var _tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (_tz) {
+        document.cookie = 'sorteo_tz=' + encodeURIComponent(_tz) + '; path=/sorteo/; max-age=86400; SameSite=Lax';
+    }
+} catch(e) {}
 </script>
 </body>
 </html>

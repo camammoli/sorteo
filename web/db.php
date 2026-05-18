@@ -1,7 +1,12 @@
 <?php
 // db.php — Sorteador de YouTube — SQLite + PDO
 
-date_default_timezone_set('America/Argentina/Mendoza');
+// Zona horaria del visitante (detectada por JS en index.php y guardada en cookie)
+$_sorteo_tz = $_COOKIE['sorteo_tz'] ?? 'America/Argentina/Mendoza';
+if (!in_array($_sorteo_tz, timezone_identifiers_list())) {
+    $_sorteo_tz = 'America/Argentina/Mendoza';
+}
+date_default_timezone_set($_sorteo_tz);
 
 define('DB_PATH', __DIR__ . '/data/sorteo.db');
 

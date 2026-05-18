@@ -156,7 +156,15 @@ if ($action === 'create') {
 
     // Notificar al admin
     $n_videos = count($video_ids);
-    notify_telegram("🎰 Nuevo sorteo creado\nCanal: {$channel_owner}\nVideo: {$video_title}" . ($n_videos > 1 ? " (+".($n_videos-1)." más)" : "") . "\nGanadores: {$num_winners}" . ($num_backups > 0 ? " + {$num_backups} suplentes" : ""));
+    $admin_url = 'https://mammoli.ar/sorteo/admin.php?key=' . urlencode(SORTEO_ADMIN_KEY);
+    notify_telegram(
+        "🎰 Nuevo sorteo\n" .
+        "Canal: {$channel_owner}\n" .
+        "Video: {$video_title}" . ($n_videos > 1 ? " (+".($n_videos-1)." más)" : "") . "\n" .
+        "Ganadores: {$num_winners}" . ($num_backups > 0 ? " + {$num_backups} suplentes" : "") . "\n" .
+        "ID: {$id}\n" .
+        "Admin: {$admin_url}"
+    );
 
     json_ok(['id' => $id, 'video_id' => $video_ids[0], 'channel_owner' => $channel_owner]);
 }

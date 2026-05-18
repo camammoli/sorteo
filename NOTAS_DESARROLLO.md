@@ -74,6 +74,20 @@ strtoupper(substr(md5($id . implode(',', array_column($winners, 'comment_id'))),
 
 ## Historial de versiones
 
+### v2.2 — 2026-05-18 (Claude Code)
+
+**Funcionalidades nuevas:**
+- Contador público de sorteos realizados en el header de `index.php` (PHP query en page load)
+- Panel admin secreto `admin.php`: tabla completa con ID, canal, video, IP hash parcial, opciones, estado, comentarios descargados, fecha — paginado de 50, protegido por `?key=SORTEO_ADMIN_KEY`
+- Notificación Telegram mejorada: incluye sorteo ID y link directo al panel admin
+- Zona horaria dinámica: JS detecta `Intl.DateTimeFormat().resolvedOptions().timeZone` → cookie `sorteo_tz` → `date_default_timezone_set()` en `db.php`
+- Footer de `stats.php`: agrega "Desarrollado por Carlos Mammoli"
+- `SORTEO_ADMIN_KEY` en `config.php` (y `config.example.php`)
+
+**Notas técnicas:**
+- Admin key debe agregarse manualmente al `config.php` del servidor (excluido de git)
+- `admin.php` incluye top IPs (últimas 24h) del rate limiter
+
 ### v2.1 — 2026-05-18 (Claude Code)
 
 **Funcionalidades nuevas:**
@@ -125,6 +139,7 @@ lftp -u "carlos@mammoli.ar,PASS" ftp://mammoli.ar -e "
   put web/certificate.php -o /sorteo/certificate.php;
   put web/verificar.php   -o /sorteo/verificar.php;
   put web/stats.php       -o /sorteo/stats.php;
+  put web/admin.php       -o /sorteo/admin.php;
   bye"
 ```
 
