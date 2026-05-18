@@ -89,9 +89,9 @@ $cert_strings = [
         'cert_subtitle_full' => 'YouTube comment giveaway — official result',
     ],
 ];
-$cs = $cert_strings[$lang];
-function cs(string $key, ...$args) use ($cs): string {
-    $s = $cs[$key] ?? $key;
+$GLOBALS['_cs'] = $cert_strings[$lang];
+function cs(string $key, ...$args): string {
+    $s = $GLOBALS['_cs'][$key] ?? $key;
     foreach ($args as $i => $v) { $s = str_replace('{' . $i . '}', (string)$v, $s); }
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 }

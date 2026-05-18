@@ -74,40 +74,66 @@ body {
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
 .header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 16px;
+    background: #0f0f0f;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    padding: 10px 16px;
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 8px rgba(0,0,0,.55);
 }
 .header-inner {
     display: flex;
     align-items: center;
+    gap: 12px;
+}
+.header-brand {
+    flex: 1;
+    display: flex;
+    align-items: center;
     gap: 10px;
+    min-width: 0;
 }
-.header-logo {
-    font-size: 24px;
-    line-height: 1;
+.header-yt-link {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
     text-decoration: none;
+    transition: opacity .15s;
 }
-.header-title { flex: 1; min-width: 0; }
-.header-title h1 {
-    font-size: 18px;
-    font-weight: 800;
+.header-yt-link:hover { opacity: .8; }
+.yt-icon { width: 38px; height: 27px; flex-shrink: 0; }
+.header-title-group { min-width: 0; }
+.header-title-line {
+    display: flex;
+    align-items: baseline;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+.header-title-line h1 {
+    font-size: 0; /* children set own sizes */
+    display: contents;
+}
+.yt-wordmark {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -.3px;
+}
+.header-picker-name {
+    font-size: 17px;
+    font-weight: 800;
     background: linear-gradient(135deg, #ef4444, #f59e0b);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    letter-spacing: -.2px;
 }
-.header-title .subtitle {
-    font-size: 12px;
-    color: var(--muted);
+.header-tagline {
+    font-size: 11px;
+    color: rgba(255,255,255,.45);
+    margin-top: 2px;
 }
 
 /* ── Main ────────────────────────────────────────────────────────────────────── */
@@ -583,9 +609,7 @@ footer a:hover { color: var(--text); }
     --shadow:    0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
     --shadow-md: 0 4px 12px rgba(0,0,0,.1);
 }
-.theme-light .header {
-    background: #1e3a5f;
-}
+/* header stays dark in both themes — YouTube brand */
 .theme-light .progress-bar-fill {
     background: linear-gradient(90deg, #2563eb, #6366f1);
 }
@@ -594,7 +618,8 @@ footer a:hover { color: var(--text); }
 .theme-light .stat-chip { background: #e2e8f0; }
 .theme-light .backup-section { border-top-color: #cbd5e1; }
 .theme-light .winner-copy-btn { background: #f1f5f9; }
-.theme-light #dice-overlay { background: rgba(17,24,39,.96); }
+.theme-light #dice-overlay { background: rgba(248,250,252,.97); }
+.theme-light #dice-overlay #dice-msg { color: #1e293b; }
 .theme-light .error-box { background: rgba(220,38,38,.08); border-color: rgba(220,38,38,.3); }
 .theme-light .check-row-festejo span { color: #b45309; }
 
@@ -628,10 +653,19 @@ footer a:hover { color: var(--text); }
     <!-- Header -->
     <header class="header">
         <div class="header-inner">
-            <span class="header-logo">🎰</span>
-            <div class="header-title">
-                <h1>Sorteador de YouTube</h1>
-                <div class="subtitle">Sorteos de comentarios · sin apps · sin registro</div>
+            <div class="header-brand">
+                <a href="https://mammoli.ar" class="header-yt-link" aria-label="mammoli.ar">
+                    <svg class="yt-icon" viewBox="0 0 90 63" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="0" y="0" width="90" height="63" rx="14" ry="14" fill="#FF0000"/>
+                        <polygon points="35,18 65,31.5 35,45" fill="#ffffff"/>
+                    </svg>
+                </a>
+                <div class="header-title-group">
+                    <div class="header-title-line">
+                        <h1><span class="yt-wordmark">YouTube</span><span class="header-picker-name" data-i18n="header_picker"> Sorteador</span></h1>
+                    </div>
+                    <div class="header-tagline" data-i18n="header_tagline">Sin apps · sin registro</div>
+                </div>
             </div>
             <div class="header-controls">
                 <button class="ctrl-btn" id="btn-lang" title="Cambiar idioma / Change language">EN</button>
@@ -935,6 +969,8 @@ var LANGS = {
     video_fallback_title:'Video de YouTube',
     prompt_copy_mention: 'Copiá esta mención:',
     prompt_copy_link:    'Copiá este enlace:',
+    header_picker:       ' Sorteador',
+    header_tagline:      'Sin apps · sin registro',
   },
   en: {
     label_url:           'YouTube Video URL',
@@ -1011,6 +1047,8 @@ var LANGS = {
     video_fallback_title:'YouTube Video',
     prompt_copy_mention: 'Copy this mention:',
     prompt_copy_link:    'Copy this link:',
+    header_picker:       ' Comment Picker',
+    header_tagline:      'No apps · no sign-up',
   }
 };
 

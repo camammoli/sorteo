@@ -127,6 +127,7 @@ foreach ($video_ids_arr as $vid_idx => $video_id) {
     $page_token  = '';
     $batch       = [];
     $batch_limit = 500;
+    $video_total = 0; // contador por video (no global) para respetar el límite individualmente
 
     $parts = 'snippet';
     if ($include_replies) $parts .= ',replies';
@@ -214,19 +215,21 @@ foreach ($video_ids_arr as $vid_idx => $video_id) {
             }
 
             // Verificar límite
-            if ($total + count($batch) >= $max) break;
+            if ($video_total + count($batch) >= $max) break;
         }
 
         // Flush batch cada 500
         if (count($batch) >= $batch_limit) {
             insert_comments_batch($id, $batch);
-            $total += count($batch);
+            $cnt = count($batch);
+            $video_total += $cnt;
+            $total       += $cnt;
             $batch = [];
             sse(['type' => 'progress', 'loaded' => $total]);
         }
 
         // Límite alcanzado
-        if ($total + count($batch) >= $max) break;
+        if ($video_total + count($batch) >= $max) break;
 
         // Siguiente página
         $page_token = $data['nextPageToken'] ?? '';
@@ -237,7 +240,7 @@ foreach ($video_ids_arr as $vid_idx => $video_id) {
     if (!empty($batch)) {
         insert_comments_batch($id, $batch);
         $total += count($batch);
-        $batch = [];
+        $batch  = [];
     }
 } // fin foreach videos
 
