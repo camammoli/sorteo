@@ -557,6 +557,17 @@ footer a:hover { color: var(--text); }
 
 /* ── Festejo: check row highlight ────────────────────────────────────────────── */
 .check-row-festejo span { color: #fbbf24; }
+
+/* ── Animación de revelación de ganadores ────────────────────────────────────── */
+@keyframes winner-pop {
+    0%   { opacity: 0; transform: scale(.75) translateY(18px); }
+    65%  { transform: scale(1.04) translateY(-3px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.winner-item.pop-in {
+    opacity: 0;
+    animation: winner-pop .45s cubic-bezier(.34,1.56,.64,1) both;
+}
 </style>
 </head>
 <body>
@@ -578,16 +589,15 @@ footer a:hover { color: var(--text); }
         <!-- ── Estado 1: Formulario ─────────────────────────────────────────── -->
         <div class="state active" id="state-form">
             <div class="card">
-                <div class="field">
-                    <label for="yt-url">URL del video de YouTube</label>
-                    <input
-                        type="url"
-                        id="yt-url"
-                        placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                        autocomplete="off"
-                        spellcheck="false"
-                    >
+                <div id="video-urls-wrap">
+                    <div class="video-url-row" data-idx="0">
+                        <div class="field">
+                            <label>URL del video de YouTube</label>
+                            <input type="url" class="yt-url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
+                        </div>
+                    </div>
                 </div>
+                <button type="button" class="btn btn-ghost" id="btn-add-video" style="margin-top:8px;font-size:13px">+ Agregar otro video</button>
             </div>
 
             <div class="card">
@@ -622,10 +632,16 @@ footer a:hover { color: var(--text); }
 
                     <div class="divider"></div>
 
-                    <label class="check-row">
-                        <input type="checkbox" id="opt-unique" checked>
-                        <span>Un sorteo por usuario (ignora comentarios múltiples del mismo)</span>
-                    </label>
+                    <div class="field">
+                        <label for="opt-max-per-user">Máximo por usuario</label>
+                        <select id="opt-max-per-user">
+                            <option value="1" selected>1 (sin duplicados)</option>
+                            <option value="2">2 por usuario</option>
+                            <option value="3">3 por usuario</option>
+                            <option value="5">5 por usuario</option>
+                            <option value="0">Sin límite</option>
+                        </select>
+                    </div>
                     <label class="check-row">
                         <input type="checkbox" id="opt-replies">
                         <span>Incluir respuestas</span>
@@ -646,8 +662,14 @@ footer a:hover { color: var(--text); }
                     </div>
 
                     <div class="field">
+                        <label for="opt-min-likes">Mínimo de likes en el comentario</label>
+                        <input type="number" id="opt-min-likes" value="0" min="0" placeholder="0 = sin filtro">
+                    </div>
+
+                    <div class="field">
                         <label for="opt-exclude">Excluir usuarios (uno por línea, sin @)</label>
                         <textarea id="opt-exclude" rows="3" placeholder="canal_dueño&#10;moderador1&#10;mi_cuenta" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:10px 12px;font-size:14px;font-family:inherit;width:100%;outline:none;resize:vertical"></textarea>
+                        <div id="exclude-hint" style="display:none;font-size:12px;color:var(--success);margin-top:4px"></div>
                     </div>
 
                     <div class="field">
@@ -936,29 +958,50 @@ if (initId) {
 // ── Formulario ────────────────────────────────────────────────────────────────
 document.getElementById('btn-buscar').addEventListener('click', startSorteo);
 
-document.getElementById('yt-url').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') startSorteo();
+// Agregar/quitar videos
+document.getElementById('btn-add-video').addEventListener('click', function() {
+    var wrap = document.getElementById('video-urls-wrap');
+    var rows = wrap.querySelectorAll('.video-url-row');
+    if (rows.length >= 5) return;
+    var idx = rows.length;
+    var div = document.createElement('div');
+    div.className = 'video-url-row';
+    div.dataset.idx = idx;
+    div.innerHTML = '<div class="field" style="flex:1"><label>Video ' + (idx + 1) + '</label>' +
+        '<input type="url" class="yt-url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off"></div>' +
+        '<button type="button" class="btn-remove-video" title="Quitar" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;align-self:flex-end;margin-bottom:2px">\xd7</button>';
+    div.style.display = 'flex'; div.style.gap = '8px'; div.style.alignItems = 'flex-start';
+    div.querySelector('.btn-remove-video').addEventListener('click', function() {
+        div.remove();
+        if (wrap.querySelectorAll('.video-url-row').length < 5) {
+            document.getElementById('btn-add-video').style.display = '';
+        }
+    });
+    wrap.appendChild(div);
+    if (rows.length + 1 >= 5) document.getElementById('btn-add-video').style.display = 'none';
 });
 
 function startSorteo() {
     showInlineError('form-error', '');
-    var url      = document.getElementById('yt-url').value.trim();
-    var winners  = parseInt(document.getElementById('opt-winners').value, 10);
-    var maxC     = parseInt(document.getElementById('opt-max').value, 10);
-    var keyword  = document.getElementById('opt-keyword').value.trim();
-    var unique   = document.getElementById('opt-unique').checked;
-    var replies  = document.getElementById('opt-replies').checked;
+    var videoUrls = Array.from(document.querySelectorAll('.yt-url-input'))
+        .map(function(i) { return i.value.trim(); })
+        .filter(Boolean);
+    if (!videoUrls.length) {
+        showInlineError('form-error', 'Ingresá al menos una URL de YouTube.');
+        return;
+    }
+    var winners    = parseInt(document.getElementById('opt-winners').value, 10);
+    var maxC       = parseInt(document.getElementById('opt-max').value, 10);
+    var keyword    = document.getElementById('opt-keyword').value.trim();
+    var maxPerUser = parseInt(document.getElementById('opt-max-per-user').value, 10);
+    var replies    = document.getElementById('opt-replies').checked;
     var dateFrom   = document.getElementById('opt-date-from').value;
     var dateTo     = document.getElementById('opt-date-to').value;
+    var minLikes   = parseInt(document.getElementById('opt-min-likes').value, 10) || 0;
     var excludeRaw = document.getElementById('opt-exclude').value;
     var excludeUsers = excludeRaw.split('\n').map(function(s){return s.trim().replace(/^@/,'');}).filter(Boolean);
     var numBackups = parseInt(document.getElementById('opt-backups').value, 10) || 0;
 
-    if (!url) {
-        showInlineError('form-error', 'Ingresá la URL del video de YouTube.');
-        document.getElementById('yt-url').focus();
-        return;
-    }
     if (isNaN(winners) || winners < 1 || winners > 100) {
         showInlineError('form-error', 'La cantidad de ganadores debe ser entre 1 y 100.');
         return;
@@ -974,14 +1017,15 @@ function startSorteo() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            url:             url,
+            video_urls:      videoUrls,
             num_winners:     winners,
             max_comments:    maxC,
             keyword:         keyword,
-            unique_users:    unique,
+            max_per_user:    maxPerUser,
             include_replies: replies,
             date_from:       dateFrom,
             date_to:         dateTo,
+            min_likes:       minLikes,
             exclude_users:   excludeUsers,
             num_backups:     numBackups
         })
@@ -993,6 +1037,19 @@ function startSorteo() {
         if (data.error) {
             showInlineError('form-error', data.error);
             return;
+        }
+        // Auto-excluir dueño del canal si el campo está vacío
+        if (data.channel_owner) {
+            var excl = document.getElementById('opt-exclude');
+            if (!excl.value.trim()) {
+                excl.value = data.channel_owner;
+                var hint = document.getElementById('exclude-hint');
+                if (hint) {
+                    hint.textContent = '✓ Dueño del canal agregado automáticamente';
+                    hint.style.display = 'block';
+                    setTimeout(function() { hint.style.display = 'none'; }, 4000);
+                }
+            }
         }
         currentId = data.id;
         history.replaceState(null, '', '?v=' + encodeURIComponent(data.id));
@@ -1034,6 +1091,14 @@ function openSSE(id) {
     eventSource.onmessage = function(e) {
         var msg;
         try { msg = JSON.parse(e.data); } catch(ex) { return; }
+
+        if (msg.type === 'video_start') {
+            document.getElementById('fetch-count').textContent =
+                msg.total > 1
+                    ? 'Video ' + (msg.index + 1) + ' de ' + msg.total + ' — conectando...'
+                    : 'Conectando...';
+            return;
+        }
 
         if (msg.type === 'already_done') {
             eventSource.close();
@@ -1176,8 +1241,9 @@ function renderReady(data, total) {
     if (opts.keyword) {
         chips += '<div class="stat-chip">Filtro: <strong>' + escHtml(opts.keyword) + '</strong></div>';
     }
-    if (opts.unique_users) {
-        chips += '<div class="stat-chip">1 por usuario</div>';
+    var maxPU = opts.max_per_user !== undefined ? opts.max_per_user : (opts.unique_users ? 1 : 0);
+    if (maxPU > 0) {
+        chips += '<div class="stat-chip">' + (maxPU === 1 ? '1 por usuario' : 'Máx ' + maxPU + ' por usuario') + '</div>';
     }
     chips += '<div class="stat-chip"><strong>' + (opts.num_winners || 1) + '</strong> ganador(es)</div>';
     document.getElementById('ready-stats').innerHTML = chips;
@@ -1299,6 +1365,11 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
     document.querySelector('#state-winners .trophy').textContent =
         single ? '🏆' : '🎉';
 
+    // Detectar si hay más de un video distinto entre los ganadores
+    var distinctVids = {};
+    winners.forEach(function(w) { if (w.source_video_id) distinctVids[w.source_video_id] = 1; });
+    var multiVid = Object.keys(distinctVids).length > 1;
+
     var html = '';
     winners.forEach(function(w, i) {
         var pos      = w.position || (i + 1);
@@ -1311,8 +1382,9 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
         // Para el lc= usar solo el ID base (antes del punto) para que YouTube
         // navegue al hilo incluso cuando el ganador es una respuesta
         var baseCommentId = w.comment_id ? w.comment_id.split('.')[0] : '';
+        var vidForLink = (multiVid && w.source_video_id) ? w.source_video_id : videoId;
         var ytLink = 'https://www.youtube.com/watch?v=' +
-            encodeURIComponent(videoId) + '&lc=' + encodeURIComponent(baseCommentId);
+            encodeURIComponent(vidForLink) + '&lc=' + encodeURIComponent(baseCommentId);
 
         var mention = single
             ? '@' + w.author + ' ¡Felicitaciones! Sos el ganador del sorteo 🏆'
@@ -1322,6 +1394,9 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
         html += '<div class="winner-pos ' + posClass + '">' + posLabel + '</div>';
         html += '<div class="winner-body">';
         html += '<div class="winner-author">@' + escHtml(w.author) + '</div>';
+        if (multiVid && w.source_video_id) {
+            html += '<div style="font-size:11px;color:var(--muted);margin-top:1px">youtu.be/' + escHtml(w.source_video_id) + '</div>';
+        }
         if (commentText) {
             html += '<div class="winner-comment">' + escHtml(commentText) + '</div>';
         }
@@ -1381,6 +1456,16 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
     });
 
     showState('winners');
+
+    // Animación de revelación de ganadores (solo en modo festejo)
+    if (festejoMode) {
+        var items = document.querySelectorAll('#winners-list .winner-item:not(.is-backup)');
+        items.forEach(function(el, i) {
+            el.classList.add('pop-in');
+            el.style.animationDelay = (i * 380) + 'ms';
+        });
+    }
+
     document.getElementById('btn-cert').href = 'certificate.php?v=' + encodeURIComponent(currentId);
 }
 

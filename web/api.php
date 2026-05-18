@@ -2,6 +2,7 @@
 // api.php — Sorteador de YouTube — API JSON
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -56,18 +57,26 @@ if ($action === 'create') {
     $body = json_decode(file_get_contents('php://input'), true);
     if (!$body) json_err('JSON inválido.');
 
-    $raw_url = trim($body['url'] ?? '');
-    if (!$raw_url) json_err('URL del video requerida.');
+    // Aceptar tanto url (string, retrocompat) como video_urls (array)
+    $raw_urls = $body['video_urls'] ?? (isset($body['url']) ? [$body['url']] : []);
+    if (!is_array($raw_urls)) $raw_urls = [$raw_urls];
+    $raw_urls = array_slice(array_filter(array_map('trim', $raw_urls)), 0, 5);
+    if (empty($raw_urls)) json_err('Ingresá al menos una URL de YouTube.');
 
-    $video_id = extract_video_id($raw_url);
-    if (!$video_id) json_err('URL de YouTube inválida.');
+    $video_ids = [];
+    foreach ($raw_urls as $u) {
+        $vid = extract_video_id($u);
+        if ($vid && !in_array($vid, $video_ids)) $video_ids[] = $vid;
+    }
+    if (empty($video_ids)) json_err('URL de YouTube inválida.');
 
     // Validar opciones
     $num_winners    = (int)($body['num_winners']    ?? 1);
     $max_comments   = (int)($body['max_comments']   ?? 10000);
     $keyword        = trim($body['keyword']         ?? '');
-    $unique_users   = !empty($body['unique_users']);
+    $max_per_user   = max(0, min(50, (int)($body['max_per_user'] ?? 1)));
     $include_replies = !empty($body['include_replies']);
+    $min_likes      = max(0, (int)($body['min_likes'] ?? 0));
 
     if ($num_winners < 1 || $num_winners > 100) {
         json_err('La cantidad de ganadores debe ser entre 1 y 100.');
@@ -101,18 +110,29 @@ if ($action === 'create') {
         'num_winners'     => $num_winners,
         'max_comments'    => $max_comments,
         'keyword'         => $keyword,
-        'unique_users'    => $unique_users,
+        'max_per_user'    => $max_per_user,
         'include_replies' => $include_replies,
         'date_from'       => $date_from,
         'date_to'         => $date_to,
         'exclude_users'   => array_values($exclude_users),
         'num_backups'     => $num_backups,
+        'min_likes'       => $min_likes,
     ];
 
     $id = gen_uuid_v4();
-    create_sorteo($id, $video_id, $options);
+    create_sorteo($id, $video_ids[0], $options);
+    update_sorteo($id, ['video_ids' => json_encode($video_ids)]);
 
-    json_ok(['id' => $id, 'video_id' => $video_id]);
+    // Auto-detectar dueño del canal para el primer video
+    $channel_owner = '';
+    $vi_url = "https://www.googleapis.com/youtube/v3/videos?part=snippet&id={$video_ids[0]}&key=" . YT_API_KEY;
+    $vi_resp = @file_get_contents($vi_url);
+    if ($vi_resp !== false) {
+        $vi_data = json_decode($vi_resp, true);
+        $channel_owner = $vi_data['items'][0]['snippet']['channelTitle'] ?? '';
+    }
+
+    json_ok(['id' => $id, 'video_id' => $video_ids[0], 'channel_owner' => $channel_owner]);
 }
 
 // ── SORTEAR ───────────────────────────────────────────────────────────────────
@@ -135,14 +155,16 @@ if ($action === 'sortear') {
     $options         = $sorteo['options'] ?? [];
     $num_winners     = (int)($options['num_winners']  ?? 1);
     $keyword         = $options['keyword']       ?? '';
-    $unique_users    = !empty($options['unique_users']);
+    // Compatibilidad hacia atrás: si existe max_per_user usarlo, si no derivar de unique_users
+    $max_per_user    = isset($options['max_per_user']) ? (int)$options['max_per_user'] : ($options['unique_users'] ? 1 : 0);
     $include_replies = !empty($options['include_replies']);
     $date_from       = $options['date_from']     ?? '';
     $date_to         = $options['date_to']       ?? '';
     $exclude_users   = (array)($options['exclude_users'] ?? []);
     $num_backups     = (int)($options['num_backups'] ?? 0);
+    $min_likes       = (int)($options['min_likes'] ?? 0);
 
-    $rowids   = get_eligible_rowids($id, $keyword, $unique_users, $include_replies, $date_from, $date_to, $exclude_users);
+    $rowids   = get_eligible_rowids($id, $keyword, $max_per_user, $include_replies, $date_from, $date_to, $exclude_users, $min_likes);
     $eligible = count($rowids);
 
     if ($eligible === 0) {

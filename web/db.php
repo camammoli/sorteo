@@ -22,6 +22,12 @@ function get_db(): PDO {
 
     // Migración: agregar is_backup si no existe
     try { $pdo->exec("ALTER TABLE winners ADD COLUMN is_backup INTEGER DEFAULT 0"); } catch (\PDOException $e) {}
+    // Migración: like_count en comments
+    try { $pdo->exec("ALTER TABLE comments ADD COLUMN like_count INTEGER DEFAULT 0"); } catch (\PDOException $e) {}
+    // Migración: source_video_id en comments
+    try { $pdo->exec("ALTER TABLE comments ADD COLUMN source_video_id TEXT"); } catch (\PDOException $e) {}
+    // Migración: video_ids en sorteos
+    try { $pdo->exec("ALTER TABLE sorteos ADD COLUMN video_ids TEXT"); } catch (\PDOException $e) {}
 
     return $pdo;
 }
@@ -121,8 +127,8 @@ function insert_comments_batch(string $sorteo_id, array $batch): void {
     if (empty($batch)) return;
     $pdo = get_db();
     $stmt = $pdo->prepare(
-        "INSERT INTO comments (sorteo_id, comment_id, author, author_id, text, published_at, is_reply)
-         VALUES (?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO comments (sorteo_id, comment_id, author, author_id, text, published_at, is_reply, like_count, source_video_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     $pdo->beginTransaction();
     foreach ($batch as $c) {
@@ -134,6 +140,8 @@ function insert_comments_batch(string $sorteo_id, array $batch): void {
             mb_substr($c['text'], 0, 1000),
             $c['published_at'],
             $c['is_reply'] ? 1 : 0,
+            $c['like_count'] ?? 0,
+            $c['source_video_id'] ?? null,
         ]);
     }
     $pdo->commit();
@@ -142,11 +150,12 @@ function insert_comments_batch(string $sorteo_id, array $batch): void {
 function get_eligible_rowids(
     string $sorteo_id,
     string $keyword,
-    bool   $unique_users,
+    int    $max_per_user,
     bool   $include_replies,
     string $date_from = '',
     string $date_to = '',
-    array  $exclude_users = []
+    array  $exclude_users = [],
+    int    $min_likes = 0
 ): array {
     $pdo = get_db();
 
@@ -180,20 +189,33 @@ function get_eligible_rowids(
         }
     }
 
-    $where_sql = implode(' AND ', $where);
-
-    if ($unique_users) {
-        $sql = "SELECT MIN(id) AS id
-                FROM comments
-                WHERE $where_sql
-                GROUP BY author_id";
-    } else {
-        $sql = "SELECT id FROM comments WHERE $where_sql";
+    if ($min_likes > 0) {
+        $where[] = "like_count >= ?";
+        $params[] = $min_likes;
     }
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $where_sql = implode(' AND ', $where);
+
+    if ($max_per_user > 0) {
+        // Traer todos los id+author_id del resultado filtrado (sin LIMIT)
+        // ORDER BY id ASC para que "primer comentario" sea el contado
+        $sql_fetch = "SELECT id, author_id FROM comments WHERE $where_sql ORDER BY id ASC";
+        $st = $pdo->prepare($sql_fetch);
+        $st->execute($params);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        $counts = []; $result = [];
+        foreach ($rows as $row) {
+            $key = $row['author_id'] ?: ('__id_' . $row['id']);
+            $n = ($counts[$key] ?? 0) + 1;
+            $counts[$key] = $n;
+            if ($n <= $max_per_user) $result[] = (int)$row['id'];
+        }
+        return $result;
+    } else {
+        $sql = "SELECT id FROM comments WHERE $where_sql";
+        $st = $pdo->prepare($sql); $st->execute($params);
+        return $st->fetchAll(PDO::FETCH_COLUMN);
+    }
 }
 
 function save_winners(string $sorteo_id, array $winner_rowids, array $backup_rowids = []): void {
@@ -216,7 +238,7 @@ function save_winners(string $sorteo_id, array $winner_rowids, array $backup_row
 function get_winners(string $sorteo_id): array {
     $pdo = get_db();
     $stmt = $pdo->prepare(
-        "SELECT w.position, w.is_backup, w.drawn_at, c.comment_id, c.author, c.author_id, c.text, c.is_reply
+        "SELECT w.position, w.is_backup, w.drawn_at, c.comment_id, c.author, c.author_id, c.text, c.is_reply, c.source_video_id
          FROM winners w
          JOIN comments c ON c.id = w.comment_rowid
          WHERE w.sorteo_id = ?
