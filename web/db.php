@@ -75,12 +75,27 @@ function _create_schema(PDO $pdo): void {
 }
 
 function _cleanup_old(PDO $pdo): void {
-    // Find sorteos older than 7 days
-    $old = $pdo->query(
+    // Paso 1 — +7 días: borrar solo comentarios de NO ganadores.
+    // Los comentarios de ganadores se conservan para que la verificación funcione indefinidamente.
+    $old_7 = $pdo->query(
         "SELECT id FROM sorteos WHERE created_at < datetime('now', '-7 days')"
     )->fetchAll(PDO::FETCH_COLUMN);
 
-    foreach ($old as $id) {
+    $del_non_winners = $pdo->prepare(
+        "DELETE FROM comments
+         WHERE sorteo_id = ?
+           AND id NOT IN (SELECT comment_rowid FROM winners WHERE sorteo_id = ?)"
+    );
+    foreach ($old_7 as $id) {
+        $del_non_winners->execute([$id, $id]);
+    }
+
+    // Paso 2 — +1 año: borrado completo (ganadores, comentarios residuales, sorteo).
+    $old_1y = $pdo->query(
+        "SELECT id FROM sorteos WHERE created_at < datetime('now', '-365 days')"
+    )->fetchAll(PDO::FETCH_COLUMN);
+
+    foreach ($old_1y as $id) {
         $pdo->prepare("DELETE FROM winners  WHERE sorteo_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM comments WHERE sorteo_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM sorteos  WHERE id = ?")->execute([$id]);
