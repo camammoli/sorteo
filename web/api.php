@@ -82,12 +82,31 @@ if ($action === 'create') {
         json_err('La palabra clave no puede superar 100 caracteres.');
     }
 
+    $date_from    = trim($body['date_from'] ?? '');
+    $date_to      = trim($body['date_to'] ?? '');
+    $exclude_users = array_slice(
+        array_filter(array_map('trim', (array)($body['exclude_users'] ?? []))),
+        0, 50
+    );
+    $num_backups  = max(0, min(20, (int)($body['num_backups'] ?? 0)));
+
+    if ($date_from !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from)) {
+        json_err('Formato de fecha inválido.');
+    }
+    if ($date_to !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to)) {
+        json_err('Formato de fecha inválido.');
+    }
+
     $options = [
         'num_winners'     => $num_winners,
         'max_comments'    => $max_comments,
         'keyword'         => $keyword,
         'unique_users'    => $unique_users,
         'include_replies' => $include_replies,
+        'date_from'       => $date_from,
+        'date_to'         => $date_to,
+        'exclude_users'   => array_values($exclude_users),
+        'num_backups'     => $num_backups,
     ];
 
     $id = gen_uuid_v4();
@@ -113,13 +132,17 @@ if ($action === 'sortear') {
         json_err('El sorteo todavía no está listo. Esperá a que terminen de descargarse los comentarios.');
     }
 
-    $options      = $sorteo['options'] ?? [];
-    $num_winners  = (int)($options['num_winners']  ?? 1);
-    $keyword      = $options['keyword']       ?? '';
-    $unique_users = !empty($options['unique_users']);
+    $options         = $sorteo['options'] ?? [];
+    $num_winners     = (int)($options['num_winners']  ?? 1);
+    $keyword         = $options['keyword']       ?? '';
+    $unique_users    = !empty($options['unique_users']);
     $include_replies = !empty($options['include_replies']);
+    $date_from       = $options['date_from']     ?? '';
+    $date_to         = $options['date_to']       ?? '';
+    $exclude_users   = (array)($options['exclude_users'] ?? []);
+    $num_backups     = (int)($options['num_backups'] ?? 0);
 
-    $rowids = get_eligible_rowids($id, $keyword, $unique_users, $include_replies);
+    $rowids   = get_eligible_rowids($id, $keyword, $unique_users, $include_replies, $date_from, $date_to, $exclude_users);
     $eligible = count($rowids);
 
     if ($eligible === 0) {
@@ -129,18 +152,24 @@ if ($action === 'sortear') {
         json_err($msg);
     }
 
-    if ($num_winners > $eligible) {
+    $total_needed = $num_winners + $num_backups;
+    if ($eligible < $total_needed) {
         json_err(
-            "Se pidieron $num_winners ganadores pero solo hay $eligible comentarios elegibles."
+            "Se necesitan $total_needed participantes ($num_winners ganadores + $num_backups suplentes) pero solo hay $eligible comentarios elegibles."
         );
     }
 
     shuffle($rowids);
-    $selected = array_slice($rowids, 0, $num_winners);
-    save_winners($id, $selected);
+    $winner_ids = array_slice($rowids, 0, $num_winners);
+    $backup_ids = array_slice($rowids, $num_winners, $num_backups);
+    save_winners($id, $winner_ids, $backup_ids);
 
-    $winners = get_winners($id);
-    json_ok(['winners' => $winners, 'eligible' => $eligible]);
+    $all_winners = get_winners($id);
+    json_ok([
+        'winners'  => array_values(array_filter($all_winners, fn($w) => !$w['is_backup'])),
+        'backups'  => array_values(array_filter($all_winners, fn($w) =>  $w['is_backup'])),
+        'eligible' => $eligible,
+    ]);
 }
 
 // ── GET ───────────────────────────────────────────────────────────────────────
@@ -163,7 +192,9 @@ if ($action === 'get') {
     ];
 
     if ($sorteo['status'] === 'done') {
-        $result['winners'] = get_winners($sorteo['id']);
+        $all_winners = get_winners($sorteo['id']);
+        $result['winners'] = array_values(array_filter($all_winners, fn($w) => !$w['is_backup']));
+        $result['backups']  = array_values(array_filter($all_winners, fn($w) =>  $w['is_backup']));
     }
 
     json_ok($result);

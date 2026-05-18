@@ -134,6 +134,7 @@ body {
 .field input[type=text],
 .field input[type=url],
 .field input[type=number],
+.field input[type=date],
 .field select {
     background: var(--bg);
     border: 1px solid var(--border);
@@ -488,6 +489,28 @@ footer a:hover { color: var(--text); }
 /* ── Copy feedback ───────────────────────────────────────────────────────────── */
 .copy-ok { color: var(--success) !important; }
 
+/* ── Backup section ──────────────────────────────────────────────────────────── */
+.backup-section {
+    margin-top: 8px;
+}
+.winner-item.is-backup {
+    opacity: .8;
+}
+.backup-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
 /* ── Responsive desktop ──────────────────────────────────────────────────────── */
 @media (min-width: 640px) {
     .app { max-width: 700px; }
@@ -609,6 +632,30 @@ footer a:hover { color: var(--text); }
                     </label>
 
                     <div class="divider"></div>
+                    <div class="section-label">Filtros avanzados</div>
+
+                    <div class="options-row-2">
+                        <div class="field">
+                            <label for="opt-date-from">Comentarios desde</label>
+                            <input type="date" id="opt-date-from">
+                        </div>
+                        <div class="field">
+                            <label for="opt-date-to">Comentarios hasta</label>
+                            <input type="date" id="opt-date-to">
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="opt-exclude">Excluir usuarios (uno por línea, sin @)</label>
+                        <textarea id="opt-exclude" rows="3" placeholder="canal_dueño&#10;moderador1&#10;mi_cuenta" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:10px 12px;font-size:14px;font-family:inherit;width:100%;outline:none;resize:vertical"></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="opt-backups">Ganadores suplentes</label>
+                        <input type="number" id="opt-backups" value="0" min="0" max="20">
+                    </div>
+
+                    <div class="divider"></div>
 
                     <label class="check-row check-row-festejo">
                         <input type="checkbox" id="opt-festejo">
@@ -691,6 +738,7 @@ footer a:hover { color: var(--text); }
                     <button class="btn btn-success" id="btn-resortear">🔄 Sortear de nuevo</button>
                     <button class="btn btn-ghost" id="btn-share">Compartir</button>
                 </div>
+                <a class="btn btn-ghost" id="btn-cert" href="#" target="_blank">📄 Certificado PDF</a>
                 <a href="?" class="btn btn-ghost" style="text-align:center">← Nuevo sorteo</a>
             </div>
         </div>
@@ -900,6 +948,11 @@ function startSorteo() {
     var keyword  = document.getElementById('opt-keyword').value.trim();
     var unique   = document.getElementById('opt-unique').checked;
     var replies  = document.getElementById('opt-replies').checked;
+    var dateFrom   = document.getElementById('opt-date-from').value;
+    var dateTo     = document.getElementById('opt-date-to').value;
+    var excludeRaw = document.getElementById('opt-exclude').value;
+    var excludeUsers = excludeRaw.split('\n').map(function(s){return s.trim().replace(/^@/,'');}).filter(Boolean);
+    var numBackups = parseInt(document.getElementById('opt-backups').value, 10) || 0;
 
     if (!url) {
         showInlineError('form-error', 'Ingresá la URL del video de YouTube.');
@@ -926,7 +979,11 @@ function startSorteo() {
             max_comments:    maxC,
             keyword:         keyword,
             unique_users:    unique,
-            include_replies: replies
+            include_replies: replies,
+            date_from:       dateFrom,
+            date_to:         dateTo,
+            exclude_users:   excludeUsers,
+            num_backups:     numBackups
         })
     })
     .then(function(r) { return r.json(); })
@@ -1222,15 +1279,15 @@ document.getElementById('btn-resortear').addEventListener('click', function() {
 function renderWinnersFromResult(data) {
     var videoId    = currentData ? currentData.video_id : '';
     var videoTitle = currentData ? (currentData.video_title || '') : '';
-    renderWinnersList(data.winners, videoId, videoTitle);
+    renderWinnersList(data.winners, data.backups || [], videoId, videoTitle);
 }
 
 function renderWinners(data) {
     currentData = data;
-    renderWinnersList(data.winners || [], data.video_id, data.video_title || '');
+    renderWinnersList(data.winners || [], data.backups || [], data.video_id, data.video_title || '');
 }
 
-function renderWinnersList(winners, videoId, videoTitle) {
+function renderWinnersList(winners, backups, videoId, videoTitle) {
     document.getElementById('w-video-name').textContent = videoTitle;
 
     var medals = ['🥇', '🥈', '🥉'];
@@ -1277,6 +1334,37 @@ function renderWinnersList(winners, videoId, videoTitle) {
         html += '</div></div>';
     });
 
+    if (backups && backups.length > 0) {
+        html += '<div class="backup-section">';
+        html += '<div style="font-size:12px;color:var(--muted);text-align:center;padding:10px 0;border-top:1px dashed var(--border);margin-top:8px">Suplentes</div>';
+        backups.forEach(function(w, i) {
+            var pos         = w.position || (i + 1);
+            var commentText = w.text || '';
+            if (commentText.length > 120) commentText = commentText.substring(0, 120) + '...';
+            var baseCommentId = w.comment_id ? w.comment_id.split('.')[0] : '';
+            var ytLink = 'https://www.youtube.com/watch?v=' +
+                encodeURIComponent(videoId) + '&lc=' + encodeURIComponent(baseCommentId);
+            var mention = '@' + w.author + ' ¡Felicitaciones! Sos el suplente #' + pos + ' del sorteo';
+
+            html += '<div class="winner-item is-backup">';
+            html += '<div class="winner-pos">#' + pos + '</div>';
+            html += '<div class="winner-body">';
+            html += '<div class="winner-author">@' + escHtml(w.author) +
+                '<span class="backup-badge">Suplente</span></div>';
+            if (commentText) {
+                html += '<div class="winner-comment">' + escHtml(commentText) + '</div>';
+            }
+            html += '<div class="winner-actions">';
+            html += '<a class="winner-link" href="' + escHtml(ytLink) +
+                '" target="_blank" rel="noopener">Ver comentario ↗</a>';
+            html += '<button class="winner-copy-btn" data-mention="' + escHtml(mention) +
+                '" title="Copiar mención para notificar al suplente">📋 Copiar mención</button>';
+            html += '</div>';
+            html += '</div></div>';
+        });
+        html += '</div>';
+    }
+
     document.getElementById('winners-list').innerHTML = html;
 
     // Botones de copiar mención
@@ -1293,6 +1381,7 @@ function renderWinnersList(winners, videoId, videoTitle) {
     });
 
     showState('winners');
+    document.getElementById('btn-cert').href = 'certificate.php?v=' + encodeURIComponent(currentId);
 }
 
 // ── Compartir ─────────────────────────────────────────────────────────────────

@@ -19,6 +19,10 @@ function get_db(): PDO {
     }
 
     _cleanup_old($pdo);
+
+    // Migración: agregar is_backup si no existe
+    try { $pdo->exec("ALTER TABLE winners ADD COLUMN is_backup INTEGER DEFAULT 0"); } catch (\PDOException $e) {}
+
     return $pdo;
 }
 
@@ -139,7 +143,10 @@ function get_eligible_rowids(
     string $sorteo_id,
     string $keyword,
     bool   $unique_users,
-    bool   $include_replies
+    bool   $include_replies,
+    string $date_from = '',
+    string $date_to = '',
+    array  $exclude_users = []
 ): array {
     $pdo = get_db();
 
@@ -153,6 +160,24 @@ function get_eligible_rowids(
     if ($keyword !== '') {
         $where[] = "LOWER(text) LIKE ?";
         $params[] = '%' . mb_strtolower($keyword) . '%';
+    }
+
+    if ($date_from !== '') {
+        $where[] = "DATE(published_at) >= ?";
+        $params[] = $date_from;
+    }
+
+    if ($date_to !== '') {
+        $where[] = "DATE(published_at) <= ?";
+        $params[] = $date_to;
+    }
+
+    if (count($exclude_users) > 0) {
+        $placeholders = implode(',', array_fill(0, count($exclude_users), '?'));
+        $where[] = "LOWER(author) NOT IN ($placeholders)";
+        foreach ($exclude_users as $u) {
+            $params[] = mb_strtolower($u);
+        }
     }
 
     $where_sql = implode(' AND ', $where);
@@ -171,15 +196,18 @@ function get_eligible_rowids(
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
-function save_winners(string $sorteo_id, array $rowids): void {
+function save_winners(string $sorteo_id, array $winner_rowids, array $backup_rowids = []): void {
     $pdo = get_db();
     $pdo->beginTransaction();
     $pdo->prepare("DELETE FROM winners WHERE sorteo_id = ?")->execute([$sorteo_id]);
     $stmt = $pdo->prepare(
-        "INSERT INTO winners (sorteo_id, comment_rowid, position) VALUES (?, ?, ?)"
+        "INSERT INTO winners (sorteo_id, comment_rowid, position, is_backup) VALUES (?, ?, ?, ?)"
     );
-    foreach ($rowids as $pos => $rowid) {
-        $stmt->execute([$sorteo_id, $rowid, $pos + 1]);
+    foreach ($winner_rowids as $pos => $rowid) {
+        $stmt->execute([$sorteo_id, $rowid, $pos + 1, 0]);
+    }
+    foreach ($backup_rowids as $pos => $rowid) {
+        $stmt->execute([$sorteo_id, $rowid, $pos + 1, 1]);
     }
     $pdo->prepare("UPDATE sorteos SET status = 'done' WHERE id = ?")->execute([$sorteo_id]);
     $pdo->commit();
@@ -188,11 +216,11 @@ function save_winners(string $sorteo_id, array $rowids): void {
 function get_winners(string $sorteo_id): array {
     $pdo = get_db();
     $stmt = $pdo->prepare(
-        "SELECT w.position, c.comment_id, c.author, c.author_id, c.text, c.is_reply
+        "SELECT w.position, w.is_backup, w.drawn_at, c.comment_id, c.author, c.author_id, c.text, c.is_reply
          FROM winners w
          JOIN comments c ON c.id = w.comment_rowid
          WHERE w.sorteo_id = ?
-         ORDER BY w.position ASC"
+         ORDER BY w.is_backup ASC, w.position ASC"
     );
     $stmt->execute([$sorteo_id]);
     return $stmt->fetchAll();
