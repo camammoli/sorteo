@@ -469,6 +469,53 @@ footer a:hover { color: var(--text); }
 
 /* ── Copy feedback ───────────────────────────────────────────────────────────── */
 .copy-ok { color: var(--success) !important; }
+
+/* ── Responsive desktop ──────────────────────────────────────────────────────── */
+@media (min-width: 640px) {
+    .app { max-width: 700px; }
+    .video-thumb         { width: 120px; height: 80px; }
+    .video-thumb-placeholder { width: 120px; height: 80px; }
+    .winners-list        { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    .winner-item         { border-bottom: 1px solid var(--border); }
+}
+
+/* ── Festejo: dados overlay ──────────────────────────────────────────────────── */
+#dice-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(17,24,39,.93);
+    z-index: 500;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+}
+#dice-overlay.visible { display: flex; }
+#dice-row { display: flex; gap: 14px; }
+.die {
+    font-size: 60px;
+    line-height: 1;
+    display: inline-block;
+    animation: die-shake .12s ease-in-out infinite alternate;
+    will-change: transform;
+    filter: drop-shadow(0 0 12px rgba(251,191,36,.5));
+}
+.die:nth-child(2) { animation-delay: .04s; font-size: 72px; }
+.die:nth-child(3) { animation-delay: .08s; }
+@keyframes die-shake {
+    from { transform: rotate(-18deg) scale(1.06) translateY(-4px); }
+    to   { transform: rotate( 18deg) scale(0.94) translateY( 4px); }
+}
+#dice-msg {
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
+/* ── Festejo: check row highlight ────────────────────────────────────────────── */
+.check-row-festejo span { color: #fbbf24; }
 </style>
 </head>
 <body>
@@ -541,6 +588,13 @@ footer a:hover { color: var(--text); }
                     <label class="check-row">
                         <input type="checkbox" id="opt-replies">
                         <span>Incluir respuestas</span>
+                    </label>
+
+                    <div class="divider"></div>
+
+                    <label class="check-row check-row-festejo">
+                        <input type="checkbox" id="opt-festejo">
+                        <span>🎉 Modo festejo — dados al sortear y serpentinas con los resultados</span>
                     </label>
                 </div>
             </div>
@@ -639,6 +693,16 @@ footer a:hover { color: var(--text); }
     </footer>
 </div>
 
+<!-- Dados overlay (modo festejo) -->
+<div id="dice-overlay">
+    <div id="dice-row">
+        <span class="die">⚄</span>
+        <span class="die">⚂</span>
+        <span class="die">⚅</span>
+    </div>
+    <div id="dice-msg">Sorteando<span id="dice-dots">...</span></div>
+</div>
+
 <!-- Toast cafecito -->
 <div id="toast">
     ☕ ¿Te resultó útil?
@@ -653,8 +717,87 @@ footer a:hover { color: var(--text); }
 
 // ── Estado de la app ──────────────────────────────────────────────────────────
 let currentId   = null;
-let currentData = null; // sorteo data del API
+let currentData = null;
 let eventSource = null;
+let festejoMode = false;
+
+// ── Dados ─────────────────────────────────────────────────────────────────────
+var diceFaces    = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+var diceTimer    = null;
+var dotsTimer    = null;
+
+function showDice() {
+    var overlay = document.getElementById('dice-overlay');
+    var dice    = overlay.querySelectorAll('.die');
+    overlay.classList.add('visible');
+    diceTimer = setInterval(function() {
+        dice.forEach(function(d) {
+            d.textContent = diceFaces[Math.floor(Math.random() * 6)];
+        });
+    }, 90);
+    var dots = document.getElementById('dice-dots');
+    dots.textContent = '.';
+    dotsTimer = setInterval(function() {
+        dots.textContent = dots.textContent.length >= 3 ? '.' : dots.textContent + '.';
+    }, 350);
+}
+
+function hideDice() {
+    clearInterval(diceTimer);
+    clearInterval(dotsTimer);
+    document.getElementById('dice-overlay').classList.remove('visible');
+}
+
+// ── Confetti ──────────────────────────────────────────────────────────────────
+function launchConfetti() {
+    var canvas  = document.createElement('canvas');
+    canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:999';
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.appendChild(canvas);
+    var ctx     = canvas.getContext('2d');
+    var colors  = ['#ef4444','#f59e0b','#22c55e','#3b82f6','#a855f7','#ec4899','#f97316','#fbbf24'];
+    var parts   = [];
+
+    for (var i = 0; i < 220; i++) {
+        parts.push({
+            x:    Math.random() * canvas.width,
+            y:   -20 - Math.random() * canvas.height * 0.6,
+            w:    7  + Math.random() * 9,
+            h:    3  + Math.random() * 5,
+            c:    colors[i % colors.length],
+            vx:  (Math.random() - 0.5) * 4,
+            vy:   1.5 + Math.random() * 3.5,
+            rot:  Math.random() * Math.PI * 2,
+            rv:  (Math.random() - 0.5) * 0.18,
+            a:    1,
+        });
+    }
+
+    var start = null;
+    function frame(ts) {
+        if (!start) start = ts;
+        var el = ts - start;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var alive = 0;
+        parts.forEach(function(p) {
+            p.x += p.vx; p.y += p.vy; p.vy += 0.07; p.rot += p.rv;
+            if (el > 3200) p.a -= 0.014;
+            if (p.a <= 0 || p.y > canvas.height + 20) return;
+            alive++;
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.a);
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.c;
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+        });
+        if (alive > 0) requestAnimationFrame(frame);
+        else canvas.remove();
+    }
+    requestAnimationFrame(frame);
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function showState(name) {
@@ -749,6 +892,8 @@ function startSorteo() {
         showInlineError('form-error', 'La cantidad de ganadores debe ser entre 1 y 100.');
         return;
     }
+
+    festejoMode = document.getElementById('opt-festejo').checked;
 
     var btn = document.getElementById('btn-buscar');
     btn.disabled = true;
@@ -973,8 +1118,13 @@ function doSortear() {
     if (!currentId) return;
     var btn = document.getElementById('btn-sortear');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Sorteando...';
     showInlineError('ready-error', '');
+
+    if (festejoMode) {
+        showDice();
+    } else {
+        btn.innerHTML = '<span class="spinner"></span> Sorteando...';
+    }
 
     fetch('api.php?action=sortear', {
         method: 'POST',
@@ -983,15 +1133,24 @@ function doSortear() {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        btn.disabled = false;
-        btn.innerHTML = '🎰 ¡Sortear!';
-        if (data.error) {
-            showInlineError('ready-error', data.error);
-            return;
+        if (festejoMode) {
+            setTimeout(function() {
+                hideDice();
+                btn.disabled = false;
+                btn.innerHTML = '🎰 ¡Sortear!';
+                if (data.error) { showInlineError('ready-error', data.error); return; }
+                renderWinnersFromResult(data);
+                launchConfetti();
+            }, 900);
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = '🎰 ¡Sortear!';
+            if (data.error) { showInlineError('ready-error', data.error); return; }
+            renderWinnersFromResult(data);
         }
-        renderWinnersFromResult(data);
     })
     .catch(function() {
+        hideDice();
         btn.disabled = false;
         btn.innerHTML = '🎰 ¡Sortear!';
         showInlineError('ready-error', 'No se pudo sortear. Revisá tu conexión.');
@@ -1003,7 +1162,12 @@ document.getElementById('btn-resortear').addEventListener('click', function() {
     if (!currentId) return;
     var btn = this;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Sorteando...';
+
+    if (festejoMode) {
+        showDice();
+    } else {
+        btn.innerHTML = '<span class="spinner"></span> Sorteando...';
+    }
 
     fetch('api.php?action=sortear', {
         method: 'POST',
@@ -1012,15 +1176,24 @@ document.getElementById('btn-resortear').addEventListener('click', function() {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        btn.disabled = false;
-        btn.innerHTML = '🔄 Sortear de nuevo';
-        if (data.error) {
-            showError(data.error);
-            return;
+        if (festejoMode) {
+            setTimeout(function() {
+                hideDice();
+                btn.disabled = false;
+                btn.innerHTML = '🔄 Sortear de nuevo';
+                if (data.error) { showError(data.error); return; }
+                renderWinnersFromResult(data);
+                launchConfetti();
+            }, 900);
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = '🔄 Sortear de nuevo';
+            if (data.error) { showError(data.error); return; }
+            renderWinnersFromResult(data);
         }
-        renderWinnersFromResult(data);
     })
     .catch(function() {
+        hideDice();
         btn.disabled = false;
         btn.innerHTML = '🔄 Sortear de nuevo';
         showError('No se pudo sortear. Revisá tu conexión.');
