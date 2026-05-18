@@ -1,6 +1,8 @@
 <?php
 // db.php — Sorteador de YouTube — SQLite + PDO
 
+date_default_timezone_set('America/Argentina/Mendoza');
+
 define('DB_PATH', __DIR__ . '/data/sorteo.db');
 
 function get_db(): PDO {
@@ -123,7 +125,8 @@ function _cleanup_old(PDO $pdo): void {
 
 function rate_limit_ok(string $ip_hash, int $max = 10, int $window = 3600): bool {
     $pdo = get_db();
-    $win = (int)(floor(time() / $window) * $window);
+    // Ventana alineada a la hora local (no UTC)
+    $win = (int)strtotime(date('Y-m-d H:00:00'));
     $st = $pdo->prepare("SELECT count FROM sorteo_rate WHERE ip_hash = ? AND window_start = ?");
     $st->execute([$ip_hash, $win]);
     $row = $st->fetch(PDO::FETCH_ASSOC);
