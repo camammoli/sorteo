@@ -1,46 +1,46 @@
-# Sorteador de YouTube
+# YouTube Comment Picker
 
-Sorteá comentarios de videos de YouTube de forma transparente y verificable. Genera un certificado firmado con HMAC-SHA256 que cualquiera puede verificar en el servidor.
+Pick random winners from YouTube comment sections — transparently and verifiably. Generates a certificate signed with HMAC-SHA256 that anyone can verify against the server.
 
-**[→ Usalo en mammoli.ar/sorteo](https://mammoli.ar/sorteo/)**
+**[→ Try it at mammoli.ar/sorteo](https://mammoli.ar/sorteo/)**
 
 ---
 
-## Características
+## Features
 
-- **Multi-video** — hasta 5 videos combinados en un mismo sorteo
-- **Filtros** — por palabra clave, fecha desde/hasta, mínimo de likes
-- **Control de entradas** — máximo de participaciones por usuario (1, 2, 3, 5 o sin límite)
-- **Ganadores suplentes** — hasta 20 suplentes ordenados
-- **Exclusión de usuarios** — el dueño del canal se auto-detecta; podés agregar más
-- **Certificado verificable** — hash HMAC-SHA256, QR apunta a la página de verificación pública
-- **Sorteo oficial** — el organizador puede bloquear el conjunto de videos para evitar sorteos paralelos (1, 3, 7 o 30 días)
-- **Historial transparente** — si se hacen múltiples sorteos del mismo conjunto de videos, todos aparecen listados en la verificación
-- **Idioma** — interfaz en español e inglés (persiste en localStorage)
-- **Tema** — claro u oscuro
+- **Multi-video** — up to 5 videos combined in a single draw
+- **Filters** — by keyword, date range, minimum likes
+- **Entry cap** — maximum participations per user (1, 2, 3, 5 or unlimited)
+- **Backup winners** — up to 20 ranked alternates
+- **User exclusion** — channel owner is auto-detected; add more manually
+- **Verifiable certificate** — HMAC-SHA256 hash, QR points to the public verification page
+- **Official draw lock** — organizer can lock the video set to prevent parallel draws (1, 3, 7 or 30 days)
+- **Transparent history** — if multiple draws are made for the same video set, all are listed on the verification page
+- **Bilingual** — Spanish and English interface (persisted in localStorage)
+- **Theme** — light and dark mode
 
 ## Stack
 
-`PHP 8` · `SQLite` (PDO, WAL mode) · `YouTube Data API v3` · `Server-Sent Events` · sin frameworks ni dependencias externas
+`PHP 8` · `SQLite` (PDO, WAL mode) · `YouTube Data API v3` · `Server-Sent Events` · no frameworks or external dependencies
 
-## Cómo funciona
+## How it works
 
-1. Ingresás la URL de uno o más videos de YouTube
-2. Los comentarios se descargan en tiempo real vía SSE (streaming)
-3. Se aplican los filtros configurados
-4. Se realiza el sorteo con `shuffle()` aleatorio
-5. Se genera un certificado con hash HMAC-SHA256 y un QR de verificación
+1. Enter the URL of one or more YouTube videos
+2. Comments are downloaded in real time via SSE streaming
+3. Configured filters are applied
+4. Winners are picked using PHP's `shuffle()` (Mersenne Twister)
+5. A certificate is generated with an HMAC-SHA256 hash and a verification QR code
 
-## Auto-hospedaje
+## Self-hosting
 
-### Requisitos
+### Requirements
 
 - PHP 8.0+
-- Extensión PDO SQLite
-- Extensión fileinfo
-- Clave de YouTube Data API v3 ([console.cloud.google.com](https://console.cloud.google.com))
+- PDO SQLite extension
+- fileinfo extension
+- YouTube Data API v3 key ([console.cloud.google.com](https://console.cloud.google.com))
 
-### Instalación
+### Setup
 
 ```bash
 git clone https://github.com/camammoli/sorteo.git
@@ -48,40 +48,40 @@ cd sorteo/web
 cp config.example.php config.php
 ```
 
-Editá `config.php` con tus claves:
+Edit `config.php` with your keys:
 
 ```php
-define('YT_API_KEY',        'tu_clave_youtube');
-define('SORTEO_ADMIN_KEY',  'clave_admin_generada');
-define('SORTEO_HMAC_SECRET','clave_hmac_generada');
+define('YT_API_KEY',        'your_youtube_api_key');
+define('SORTEO_ADMIN_KEY',  'generated_admin_key');
+define('SORTEO_HMAC_SECRET','generated_hmac_secret');
 ```
 
-Generá las claves locales:
+Generate the local keys:
 
 ```bash
-# HMAC secret (firma de certificados)
+# HMAC secret (certificate signing)
 openssl rand -hex 32
 
-# Admin key (panel /admin.php?key=...)
+# Admin key (panel at /admin.php?key=...)
 openssl rand -hex 16
 ```
 
-El directorio `web/data/` necesita permisos de escritura para SQLite:
+The `web/data/` directory needs write permissions for SQLite:
 
 ```bash
 chmod 750 web/data/
 ```
 
-### Panel de administración
+### Admin panel
 
-Accesible en `/sorteo/admin.php?key=SORTEO_ADMIN_KEY` — tabla de todos los sorteos con canal, IP (hasheada), opciones y estado.
+Accessible at `/sorteo/admin.php?key=SORTEO_ADMIN_KEY` — full table of all draws with channel, hashed IP, options and status.
 
-## Verificación de certificados
+## Certificate verification
 
-La página `/sorteo/verificar.php` muestra los datos del servidor para comparación con el documento presentado. El hash cubre: ID del sorteo, ID del video, fecha UTC, IDs y autores de los ganadores.
+The `/sorteo/verificar.php` page shows server-side data for comparison with the presented document. The hash covers: draw UUID, video ID, UTC timestamp, winner comment IDs and authors.
 
-Los certificados emitidos antes de v2.3 usan hash MD5 (16 caracteres) y siguen siendo verificables.
+Certificates issued before v2.3 use an MD5 hash (16 characters) and remain verifiable.
 
-## Licencia
+## License
 
 MIT · [Carlos Ariel Mammoli](https://mammoli.ar)
