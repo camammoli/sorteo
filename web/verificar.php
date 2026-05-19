@@ -518,11 +518,11 @@ body {
     <div class="v-card">
         <div class="v-card-title"><?= vs('all_draws_label') ?></div>
         <ul class="v-draws-list">
-        <?php foreach ($mismo_conjunto as $i => $s):
-            $is_current = ($s['id'] === $id);
+        <?php foreach ($mismo_conjunto as $i => $draw):
+            $is_current = ($draw['id'] === $id);
             $n          = $i + 1;
-            $fecha      = $s['created_at'] ? gmdate('d/m/Y H:i', strtotime($s['created_at'])) . ' UTC' : '';
-            $cert_url   = 'certificate.php?v=' . urlencode($s['id']) . '&lang=' . vesc($lang);
+            $fecha      = $draw['created_at'] ? gmdate('d/m/Y H:i', strtotime($draw['created_at'])) . ' UTC' : '';
+            $cert_url   = 'certificate.php?v=' . urlencode($draw['id']) . '&lang=' . vesc($lang);
         ?>
         <li class="v-draw-item<?= $is_current ? ' current' : '' ?>">
             <span class="v-draw-num">#<?= $n ?></span>
