@@ -2,6 +2,7 @@
 // verificar.php — Verifica la autenticidad de un certificado de sorteo
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/config.php';
 
 $id   = trim($_GET['v'] ?? '');
 $hash = strtoupper(trim($_GET['h'] ?? ''));
@@ -65,9 +66,9 @@ $strings = [
         'page_title'       => 'Verificar certificado — Sorteador de YouTube',
         'heading'          => 'Verificación de certificado',
         'subheading'       => 'Sorteador de YouTube · mammoli.ar',
-        'ok_title'         => 'Certificado auténtico',
-        'ok_desc'          => 'El certificado es válido. Su firma criptográfica coincide con los datos del servidor.',
-        'ok_legacy_desc'   => 'El certificado es válido. Fue emitido antes del sistema de firma segura — verificá visualmente que los datos del servidor coincidan con el documento.',
+        'ok_title'         => 'Certificado encontrado',
+        'ok_desc'          => 'Verificá que los ganadores que aparecen abajo coincidan con el documento presentado.',
+        'ok_legacy_desc'   => 'Verificá que los ganadores que aparecen abajo coincidan con el documento presentado.',
         'tampered_title'   => 'Certificado alterado',
         'tampered_desc'    => 'El contenido no coincide con el sorteo original. El documento fue modificado después de emitido.',
         'not_found_title'  => 'Sorteo no encontrado',
@@ -94,9 +95,9 @@ $strings = [
         'page_title'       => 'Verify certificate — YouTube Comment Picker',
         'heading'          => 'Certificate Verification',
         'subheading'       => 'YouTube Comment Picker · mammoli.ar',
-        'ok_title'         => 'Authentic Certificate',
-        'ok_desc'          => 'This certificate is valid. Its cryptographic signature matches the server data.',
-        'ok_legacy_desc'   => 'This certificate is valid. It was issued before the secure signature system — visually verify that the server data matches the document.',
+        'ok_title'         => 'Certificate Found',
+        'ok_desc'          => 'Verify that the winners shown below match the document you were presented.',
+        'ok_legacy_desc'   => 'Verify that the winners shown below match the document you were presented.',
         'tampered_title'   => 'Tampered Certificate',
         'tampered_desc'    => 'The content does not match the original draw. The document was modified after being issued.',
         'not_found_title'  => 'Draw Not Found',
