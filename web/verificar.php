@@ -21,6 +21,7 @@ $drawn_at_fmt   = '';
 $video_title    = '';
 $video_id_raw   = '';
 $mismo_conjunto = [];
+$verif_lock     = null;
 
 if ($id !== '' || $hash !== '') {
     if (!$valid_uuid || !$valid_hash) {
@@ -56,6 +57,7 @@ if ($id !== '' || $hash !== '') {
                 $video_title    = $sorteo['video_title'] ?? '';
                 $drawn_at_fmt   = $drawn_at_raw ? gmdate('d/m/Y H:i', strtotime($drawn_at_raw)) . ' UTC' : '';
                 $mismo_conjunto = get_sorteos_mismo_conjunto($id);
+                $verif_lock     = get_active_lock(video_set_from_sorteo($sorteo));
             } else {
                 $state = 'tampered';
             }
@@ -524,9 +526,13 @@ body {
             $fecha      = $draw['created_at'] ? gmdate('d/m/Y H:i', strtotime($draw['created_at'])) . ' UTC' : '';
             $cert_url   = 'certificate.php?v=' . urlencode($draw['id']) . '&lang=' . vesc($lang);
         ?>
+        <?php $is_official_draw = $verif_lock && ($verif_lock['sorteo_id'] === $draw['id']); ?>
         <li class="v-draw-item<?= $is_current ? ' current' : '' ?>">
             <span class="v-draw-num">#<?= $n ?></span>
             <span class="v-draw-date"><?= vesc($fecha) ?></span>
+            <?php if ($is_official_draw): ?>
+                <span class="v-draw-current-badge" style="background:#22c55e">✓ oficial</span>
+            <?php endif; ?>
             <?php if ($is_current): ?>
                 <span class="v-draw-current-badge"><?= vs('this_draw') ?></span>
             <?php else: ?>

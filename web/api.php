@@ -80,6 +80,17 @@ if ($action === 'create') {
     }
     if (empty($video_ids)) json_err('URL de YouTube inválida.');
 
+    // Verificar bloqueo del conjunto de videos
+    $norm_ids = $video_ids; sort($norm_ids);
+    $video_set_norm = implode(',', $norm_ids);
+    $active_lock = get_active_lock($video_set_norm);
+    if ($active_lock) {
+        $until_fmt = gmdate('d/m/Y H:i', strtotime($active_lock['locked_until'])) . ' UTC';
+        http_response_code(403);
+        echo json_encode(['error' => "Este conjunto de videos está bloqueado hasta {$until_fmt}.", 'code' => 'LOCKED', 'locked_until_fmt' => $until_fmt], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // Rate limiting: máx 10 sorteos/hora por IP
     $ip      = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
     $ip_hash = hash('sha256', trim(explode(',', $ip)[0]));
@@ -254,6 +265,62 @@ if ($action === 'get') {
     }
 
     json_ok($result);
+}
+
+// ── GET_LOCK ──────────────────────────────────────────────────────────────────
+if ($action === 'get_lock') {
+    $id = trim($_GET['id'] ?? '');
+    if (!valid_uuid($id)) json_err('ID inválido.');
+    $sorteo = get_sorteo($id);
+    if (!$sorteo) json_err('Sorteo no encontrado.', 404);
+
+    $video_set = video_set_from_sorteo($sorteo);
+    $lock      = get_active_lock($video_set);
+    if (!$lock) { json_ok(['locked' => false]); }
+
+    json_ok([
+        'locked'           => true,
+        'is_owner'         => ($lock['sorteo_id'] === $id),
+        'locked_until'     => $lock['locked_until'],
+        'locked_until_fmt' => gmdate('d/m/Y H:i', strtotime($lock['locked_until'])) . ' UTC',
+    ]);
+}
+
+// ── LOCK ──────────────────────────────────────────────────────────────────────
+if ($action === 'lock') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_err('POST requerido.', 405);
+    $body = json_decode(file_get_contents('php://input'), true);
+    $id   = trim($body['id']   ?? '');
+    $days = (int)($body['days'] ?? 0);
+
+    if (!valid_uuid($id)) json_err('ID inválido.');
+    if (!in_array($days, [1, 3, 7, 30])) json_err('Duración inválida. Opciones: 1, 3, 7, 30 días.');
+
+    $sorteo = get_sorteo($id);
+    if (!$sorteo || $sorteo['status'] !== 'done') json_err('Sorteo no encontrado o no finalizado.', 404);
+
+    $video_set = video_set_from_sorteo($sorteo);
+    $existing  = get_active_lock($video_set);
+    if ($existing && $existing['sorteo_id'] !== $id) {
+        $until_fmt = gmdate('d/m/Y H:i', strtotime($existing['locked_until'])) . ' UTC';
+        json_err("Este conjunto ya está bloqueado por otro sorteo hasta {$until_fmt}.", 409);
+    }
+
+    $lock      = create_lock($id, $video_set, $days);
+    $until_fmt = gmdate('d/m/Y H:i', strtotime($lock['locked_until'])) . ' UTC';
+    json_ok(['locked' => true, 'locked_until' => $lock['locked_until'], 'locked_until_fmt' => $until_fmt]);
+}
+
+// ── UNLOCK ────────────────────────────────────────────────────────────────────
+if ($action === 'unlock') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_err('POST requerido.', 405);
+    $body = json_decode(file_get_contents('php://input'), true);
+    $id   = trim($body['id'] ?? '');
+    if (!valid_uuid($id)) json_err('ID inválido.');
+    $sorteo = get_sorteo($id);
+    if (!$sorteo) json_err('Sorteo no encontrado.', 404);
+    delete_lock($id);
+    json_ok(['unlocked' => true]);
 }
 
 json_err('Acción inválida.', 400);

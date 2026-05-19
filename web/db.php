@@ -47,6 +47,17 @@ function get_db(): PDO {
             PRIMARY KEY (ip_hash, window_start)
         )");
     } catch (\PDOException $e) {}
+    // Tabla de bloqueos de conjunto de videos
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS sorteo_locks (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            sorteo_id    TEXT NOT NULL,
+            video_set    TEXT NOT NULL,
+            locked_until TEXT NOT NULL,
+            created_at   TEXT DEFAULT (datetime('now'))
+        )");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_locks_video_set ON sorteo_locks(video_set)");
+    } catch (\PDOException $e) {}
 
     return $pdo;
 }
@@ -293,6 +304,41 @@ function save_winners(string $sorteo_id, array $winner_rowids, array $backup_row
     $pdo->prepare("UPDATE sorteos SET status = 'done' WHERE id = ?")->execute([$sorteo_id]);
     $pdo->commit();
 }
+
+// ── LOCKS ─────────────────────────────────────────────────────────────────────
+
+function get_active_lock(string $video_set): ?array {
+    $pdo = get_db();
+    $st  = $pdo->prepare(
+        "SELECT * FROM sorteo_locks WHERE video_set = ? AND locked_until > datetime('now') ORDER BY created_at DESC LIMIT 1"
+    );
+    $st->execute([$video_set]);
+    return $st->fetch() ?: null;
+}
+
+function create_lock(string $sorteo_id, string $video_set, int $days): array {
+    $pdo = get_db();
+    $pdo->prepare("DELETE FROM sorteo_locks WHERE sorteo_id = ?")->execute([$sorteo_id]);
+    $locked_until = gmdate('Y-m-d H:i:s', time() + $days * 86400);
+    $pdo->prepare(
+        "INSERT INTO sorteo_locks (sorteo_id, video_set, locked_until) VALUES (?, ?, ?)"
+    )->execute([$sorteo_id, $video_set, $locked_until]);
+    return ['sorteo_id' => $sorteo_id, 'locked_until' => $locked_until];
+}
+
+function delete_lock(string $sorteo_id): void {
+    get_db()->prepare("DELETE FROM sorteo_locks WHERE sorteo_id = ?")->execute([$sorteo_id]);
+}
+
+function video_set_from_sorteo(array $sorteo): string {
+    $ids = [];
+    if (!empty($sorteo['video_ids'])) $ids = json_decode($sorteo['video_ids'], true) ?: [];
+    if (empty($ids) && !empty($sorteo['video_id'])) $ids = [$sorteo['video_id']];
+    sort($ids);
+    return implode(',', $ids);
+}
+
+// ── SORTEOS MISMO CONJUNTO ────────────────────────────────────────────────────
 
 function _normalize_video_ids(array $sorteo): string {
     $ids = [];

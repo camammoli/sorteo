@@ -30,6 +30,12 @@ $hmac_data   = implode('|', [
 ]);
 $verify_hash = strtoupper(substr(hash_hmac('sha256', $hmac_data, SORTEO_HMAC_SECRET), 0, 32));
 
+// Estado de bloqueo
+$cert_video_set = video_set_from_sorteo($sorteo);
+$cert_lock      = get_active_lock($cert_video_set);
+$is_official    = $cert_lock && ($cert_lock['sorteo_id'] === $id);
+$is_unofficial  = $cert_lock && ($cert_lock['sorteo_id'] !== $id);
+
 // Número de orden entre sorteos del mismo conjunto de videos
 $mismo_conjunto  = get_sorteos_mismo_conjunto($id);
 $draw_number     = 1;
@@ -67,8 +73,11 @@ $cert_strings = [
         'unique_user_no'  => 'No',
         'unique_user_label' => 'Usuario único',
         'draw_details' => 'Detalles del sorteo',
-        'draw_number'  => 'N.º de sorteo para este conjunto',
+        'draw_number'         => 'N.º de sorteo para este conjunto',
         'draw_number_warning' => 'Este es el sorteo #{0} realizado para este conjunto de videos. Verificá la fecha y comparalo con el certificado original.',
+        'official_badge'      => '✓ Sorteo oficial',
+        'official_until'      => 'Marcado como oficial hasta {0}',
+        'unofficial_warn'     => 'Este sorteo no está marcado como el oficial para este conjunto de videos.',
         'date_from_label' => 'Comentarios desde',
         'date_to_label'   => 'Comentarios hasta',
         'keyword_label'   => 'Filtro palabra clave',
@@ -106,8 +115,11 @@ $cert_strings = [
         'unique_user_no'  => 'No',
         'unique_user_label' => 'Unique user',
         'draw_details' => 'Draw Details',
-        'draw_number'  => 'Draw # for this set',
+        'draw_number'         => 'Draw # for this set',
         'draw_number_warning' => 'This is draw #{0} for this set of videos. Verify the date and compare it against the original certificate.',
+        'official_badge'      => '✓ Official Draw',
+        'official_until'      => 'Marked as official until {0}',
+        'unofficial_warn'     => 'This draw is not marked as the official one for this set of videos.',
         'date_from_label' => 'Comments from',
         'date_to_label'   => 'Comments until',
         'keyword_label'   => 'Keyword filter',
@@ -430,6 +442,33 @@ body {
 }
 .btn-print:hover { opacity: .85; }
 
+/* Badge sorteo oficial */
+.cert-official-badge {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-left: 4px solid #22c55e;
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: #14532d;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin-bottom: 28px;
+    font-weight: 600;
+}
+.cert-unofficial-warn {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-left: 4px solid #ef4444;
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: #7f1d1d;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin-bottom: 28px;
+}
+
 /* Aviso sorteo múltiple */
 .cert-multi-warn {
     background: #fffbeb;
@@ -545,7 +584,15 @@ body {
             </div>
         </div>
 
-        <?php if ($draw_number > 1): ?>
+        <?php if ($is_official): ?>
+        <div class="cert-official-badge">
+            <?= cs('official_badge') ?> — <?= cs('official_until', gmdate('d/m/Y H:i', strtotime($cert_lock['locked_until'])) . ' UTC') ?>
+        </div>
+        <?php elseif ($is_unofficial): ?>
+        <div class="cert-unofficial-warn">
+            ⚠ <?= cs('unofficial_warn') ?>
+        </div>
+        <?php elseif ($draw_number > 1): ?>
         <div class="cert-multi-warn">
             <strong>⚠ <?= cs('draw_number_warning', $draw_number) ?></strong>
         </div>
