@@ -20,7 +20,8 @@
 | `web/db.php` | SQLite: schema, CRUD, migraciones inline |
 | `web/certificate.php` | Certificado imprimible con QR de verificación |
 | `web/verificar.php` | Verificación pública de certificados |
-| `web/config.php` | `YT_API_KEY` — excluido de git (`.gitignore`) |
+| `web/config.php` | `YT_API_KEY`, `SORTEO_ADMIN_KEY`, `SORTEO_HMAC_SECRET` — excluido de git (`.gitignore`) |
+| `web/config.example.php` | Plantilla de config.php con placeholders — incluida en git |
 | `web/data/sorteo.db` | Base SQLite — excluida de git |
 
 ## Base de datos
@@ -61,18 +62,74 @@ winners   (id, sorteo_id, comment_rowid, position, is_backup, drawn_at)
 
 ## Verificación de certificados
 
-El hash de verificación es:
-```
-strtoupper(substr(md5($id . implode(',', array_column($winners, 'comment_id'))), 0, 16))
+Desde v2.3 se usa **HMAC-SHA256** con clave secreta del servidor (antes era MD5 simple).
+
+### Hash actual (v2.3+)
+
+```php
+$hmac_data = implode('|', [
+    $id,                                              // UUID del sorteo
+    $sorteo['video_id'],                              // ID del video YouTube
+    $drawn_at_raw,                                    // fecha UTC tal como está en la BD
+    implode(',', array_column($winners, 'comment_id')),
+    implode(',', array_column($winners, 'author')),
+]);
+$hash = strtoupper(substr(hash_hmac('sha256', $hmac_data, SORTEO_HMAC_SECRET), 0, 32));
 ```
 
-- Se calcula en `certificate.php` y se muestra como texto + QR
+- Se calcula en `certificate.php` y se muestra como texto + QR (32 chars hex)
 - El QR apunta a `verificar.php?v=UUID&h=HASH&lang=…`
-- `verificar.php` recalcula el hash desde la DB y compara
-- Si el sorteo expiró (7 días), devuelve estado `not_found`
-- Si el hash no coincide, devuelve estado `tampered`
+- `verificar.php` recalcula el HMAC desde la DB y compara
+- Sin `SORTEO_HMAC_SECRET` es imposible generar un hash válido
+- Los certificados con hash de 16 chars (MD5 legacy) siguen verificando con el método anterior
+
+### Compatibilidad legacy
+
+`verificar.php` detecta la longitud del hash:
+- 32 chars → verifica con HMAC-SHA256
+- 16 chars → verifica con MD5 (certificados emitidos antes de v2.3), muestra aviso
+
+### Lo que la verificación garantiza y lo que no
+
+- **Garantiza:** el sorteo existe en el servidor con esos ganadores exactos
+- **No garantiza:** que el documento impreso o PDF no fue editado (el QR es una imagen fija)
+- **Mitigación:** la página de verificación muestra los datos del servidor para comparación visual
+
+### Generar las claves para config.php
+
+**YouTube Data API v3:**
+1. Ir a https://console.cloud.google.com → Crear proyecto
+2. Habilitar "YouTube Data API v3"
+3. Crear credencial → Clave de API → restringir a la API de YouTube
+4. Pegar en `config.php` como `YT_API_KEY`
+
+**SORTEO_HMAC_SECRET** (clave de firma):
+```bash
+openssl rand -hex 32
+```
+Pegar el resultado en `config.php` como `SORTEO_HMAC_SECRET`. Nunca compartirla ni subirla al repo.
+
+**SORTEO_ADMIN_KEY** (panel admin):
+```bash
+openssl rand -hex 16
+```
+Acceso por URL: `mammoli.ar/sorteo/admin.php?key=VALOR`
 
 ## Historial de versiones
+
+### v2.3 — 2026-05-19 (Claude Code)
+
+**Seguridad y certificados:**
+- Certificados: hora del sorteo en UTC (`gmdate`) — antes variaba según la TZ del visitante
+- Certificados: hash de verificación cambiado de MD5 (16 chars) a HMAC-SHA256 (32 chars), firmado con `SORTEO_HMAC_SECRET` — cubre id, video, fecha, comment_ids y autores; no recalculable sin la clave del servidor
+- `verificar.php`: soporte dual — verifica HMAC nuevo (32 chars) o MD5 legacy (16 chars)
+- `verificar.php`: datos del servidor visibles también en estado `tampered` para comparación visual
+- `verificar.php`: mensaje cambiado de "Certificado auténtico" a "Certificado encontrado — verificá los ganadores" para no dar falsa sensación de integridad del documento impreso
+- `config.example.php`: agrega `SORTEO_HMAC_SECRET`
+
+**Notas técnicas:**
+- `SORTEO_HMAC_SECRET` debe generarse con `openssl rand -hex 32` y agregarse manualmente al `config.php` del servidor
+- Los certificados emitidos antes de v2.3 siguen siendo verificables (modo legacy MD5)
 
 ### v2.2 — 2026-05-18 (Claude Code)
 
