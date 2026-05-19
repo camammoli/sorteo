@@ -1034,7 +1034,8 @@ var LANGS = {
     lock_btn_unlock:     'Desbloquear',
     lock_other_title:    '⚠ Conjunto bloqueado por otro sorteo',
     lock_other_desc:     'Este conjunto de videos está bloqueado hasta {0} por otro sorteo.',
-    err_locked:          'Este conjunto de videos está bloqueado hasta {0}.',
+    err_locked:              'Este conjunto de videos está bloqueado hasta {0}.',
+    cert_issued_no_redraw:   'Ya se emitió un certificado para este sorteo. No se puede sortear de nuevo.',
   },
   en: {
     label_url:           'YouTube Video URL',
@@ -1127,7 +1128,8 @@ var LANGS = {
     lock_btn_unlock:     'Unlock',
     lock_other_title:    '⚠ Set locked by another draw',
     lock_other_desc:     'This set of videos is locked until {0} by another draw.',
-    err_locked:          'This set of videos is locked until {0}.',
+    err_locked:              'This set of videos is locked until {0}.',
+    cert_issued_no_redraw:   'A certificate has already been issued for this draw. Drawing again is not allowed.',
   }
 };
 
@@ -1856,8 +1858,14 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
 
     document.getElementById('btn-cert').href = 'certificate.php?v=' + encodeURIComponent(currentId) + '&lang=' + currentLang;
 
-    // Marcar esta sesión como propietaria del sorteo para el panel de bloqueo en el certificado
-    try { localStorage.setItem('sorteoLockCandidate', JSON.stringify({id: currentId, ts: Date.now()})); } catch(e) {}
+    // Al abrir el certificado: registrar la sesión y deshabilitar el re-sorteo
+    document.getElementById('btn-cert').addEventListener('click', function onCertClick() {
+        try { localStorage.setItem('sorteoLockCandidate', JSON.stringify({id: currentId, ts: Date.now()})); } catch(e) {}
+        var rBtn = document.getElementById('btn-resortear');
+        rBtn.disabled = true;
+        rBtn.title = t('cert_issued_no_redraw');
+        this.removeEventListener('click', onCertClick);
+    }, {once: true});
 }
 
 // ── Compartir ─────────────────────────────────────────────────────────────────
