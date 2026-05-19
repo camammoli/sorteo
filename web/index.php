@@ -426,32 +426,6 @@ body {
 }
 .actions-row-h .btn { flex: 1; min-width: 120px; }
 
-/* ── Panel de bloqueo ───────────────────────────────────────────────────────── */
-.lock-panel {
-    margin-top: 4px;
-    padding: 16px 18px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-}
-.lock-panel-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
-.lock-panel-title-active { color: var(--success); }
-.lock-panel-desc { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
-.lock-days { display: flex; gap: 8px; flex-wrap: wrap; }
-.btn-lock-day {
-    flex: 1; min-width: 60px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: var(--radius-sm);
-    padding: 8px 4px;
-    font-size: 13px; font-weight: 600;
-    cursor: pointer; font-family: inherit;
-    transition: background .15s, border-color .15s;
-}
-.btn-lock-day:hover { background: var(--border); }
-.btn-lock-day:disabled { opacity: .45; cursor: default; }
-
 /* ── Error box ───────────────────────────────────────────────────────────────── */
 .error-box {
     background: rgba(239,68,68,.12);
@@ -920,28 +894,6 @@ footer a:hover { color: var(--text); }
                 <a href="?" class="btn btn-ghost" style="text-align:center" data-i18n="btn_new_giveaway">← Nuevo sorteo</a>
             </div>
 
-            <!-- Panel de bloqueo -->
-            <div id="lock-panel" class="lock-panel" style="display:none">
-                <div id="lock-view-unlocked">
-                    <div class="lock-panel-title" data-i18n="lock_title">🔒 Marcar como sorteo oficial</div>
-                    <div class="lock-panel-desc" data-i18n="lock_desc"></div>
-                    <div class="lock-days">
-                        <button class="btn-lock-day" data-days="1" data-i18n="lock_1d">1 día</button>
-                        <button class="btn-lock-day" data-days="3" data-i18n="lock_3d">3 días</button>
-                        <button class="btn-lock-day" data-days="7" data-i18n="lock_7d">7 días</button>
-                        <button class="btn-lock-day" data-days="30" data-i18n="lock_30d">30 días</button>
-                    </div>
-                </div>
-                <div id="lock-view-active" style="display:none">
-                    <div class="lock-panel-title lock-panel-title-active" data-i18n="lock_active_title">🔐 Sorteo oficial activo</div>
-                    <div id="lock-active-desc" class="lock-panel-desc"></div>
-                    <button id="btn-unlock" class="btn btn-ghost" style="width:100%;margin-top:4px" data-i18n="lock_btn_unlock">Desbloquear</button>
-                </div>
-                <div id="lock-view-other" style="display:none">
-                    <div class="lock-panel-title" data-i18n="lock_other_title">⚠ Conjunto bloqueado por otro sorteo</div>
-                    <div id="lock-other-desc" class="lock-panel-desc"></div>
-                </div>
-            </div>
         </div>
 
         <!-- ── Estado: Error global ──────────────────────────────────────────── -->
@@ -1904,74 +1856,9 @@ function renderWinnersList(winners, backups, videoId, videoTitle) {
 
     document.getElementById('btn-cert').href = 'certificate.php?v=' + encodeURIComponent(currentId) + '&lang=' + currentLang;
 
-    loadLockState(currentId);
+    // Marcar esta sesión como propietaria del sorteo para el panel de bloqueo en el certificado
+    try { localStorage.setItem('sorteoLockCandidate', JSON.stringify({id: currentId, ts: Date.now()})); } catch(e) {}
 }
-
-// ── Panel de bloqueo ──────────────────────────────────────────────────────────
-function showLockView(view) {
-    ['unlocked', 'active', 'other'].forEach(function(v) {
-        document.getElementById('lock-view-' + v).style.display = (v === view) ? '' : 'none';
-    });
-    document.getElementById('lock-panel').style.display = '';
-}
-
-function loadLockState(id) {
-    fetch('api.php?action=get_lock&id=' + encodeURIComponent(id))
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (!data.locked) {
-                showLockView('unlocked');
-            } else if (data.is_owner) {
-                document.getElementById('lock-active-desc').textContent =
-                    tf('lock_active_desc', data.locked_until_fmt);
-                showLockView('active');
-            } else {
-                document.getElementById('lock-other-desc').textContent =
-                    tf('lock_other_desc', data.locked_until_fmt);
-                showLockView('other');
-            }
-        })
-        .catch(function() { /* silencioso */ });
-}
-
-document.querySelectorAll('.btn-lock-day').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        if (!currentId) return;
-        var days = parseInt(btn.dataset.days);
-        document.querySelectorAll('.btn-lock-day').forEach(function(b) { b.disabled = true; });
-        fetch('api.php?action=lock', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({id: currentId, days: days})
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.locked) {
-                document.getElementById('lock-active-desc').textContent =
-                    tf('lock_active_desc', data.locked_until_fmt);
-                showLockView('active');
-            } else {
-                document.querySelectorAll('.btn-lock-day').forEach(function(b) { b.disabled = false; });
-            }
-        })
-        .catch(function() {
-            document.querySelectorAll('.btn-lock-day').forEach(function(b) { b.disabled = false; });
-        });
-    });
-});
-
-document.getElementById('btn-unlock').addEventListener('click', function() {
-    if (!currentId) return;
-    fetch('api.php?action=unlock', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({id: currentId})
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.unlocked) showLockView('unlocked');
-    });
-});
 
 // ── Compartir ─────────────────────────────────────────────────────────────────
 document.getElementById('btn-share').addEventListener('click', function() {

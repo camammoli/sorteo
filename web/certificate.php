@@ -78,6 +78,15 @@ $cert_strings = [
         'official_badge'      => '✓ Sorteo oficial',
         'official_until'      => 'Marcado como oficial hasta {0}',
         'unofficial_warn'     => 'Este sorteo no está marcado como el oficial para este conjunto de videos.',
+        'lock_panel_title'    => '🔒 Marcar como sorteo oficial',
+        'lock_panel_desc'     => 'Bloqueá este conjunto de videos para que no se puedan realizar nuevos sorteos durante el período elegido. Este certificado aparecerá como el oficial en la verificación.',
+        'lock_1d'             => '1 día',
+        'lock_3d'             => '3 días',
+        'lock_7d'             => '7 días',
+        'lock_30d'            => '30 días',
+        'lock_active_title'   => '🔐 Sorteo oficial activo',
+        'lock_active_desc'    => 'Marcado como oficial hasta {0}. No se pueden realizar nuevos sorteos del mismo conjunto de videos.',
+        'lock_btn_unlock'     => 'Desbloquear',
         'date_from_label' => 'Comentarios desde',
         'date_to_label'   => 'Comentarios hasta',
         'keyword_label'   => 'Filtro palabra clave',
@@ -120,6 +129,15 @@ $cert_strings = [
         'official_badge'      => '✓ Official Draw',
         'official_until'      => 'Marked as official until {0}',
         'unofficial_warn'     => 'This draw is not marked as the official one for this set of videos.',
+        'lock_panel_title'    => '🔒 Mark as official draw',
+        'lock_panel_desc'     => 'Lock this set of videos so no new draws can be created during the chosen period. This certificate will appear as the official one in verification.',
+        'lock_1d'             => '1 day',
+        'lock_3d'             => '3 days',
+        'lock_7d'             => '7 days',
+        'lock_30d'            => '30 days',
+        'lock_active_title'   => '🔐 Official draw active',
+        'lock_active_desc'    => 'Marked as official until {0}. No new draws can be created for the same set of videos.',
+        'lock_btn_unlock'     => 'Unlock',
         'date_from_label' => 'Comments from',
         'date_to_label'   => 'Comments until',
         'keyword_label'   => 'Keyword filter',
@@ -498,8 +516,45 @@ body {
     font-family: Georgia, serif;
 }
 
+/* Panel de bloqueo (solo visible en pantalla, no en impresión) */
+.cert-lock-panel {
+    max-width: 800px;
+    margin: 20px auto 0;
+    background: #fff;
+    border: 1px solid #d4b896;
+    border-radius: 4px;
+    padding: 18px 24px;
+    font-family: Arial, sans-serif;
+}
+.cert-lock-title { font-size: 15px; font-weight: 700; color: #7a5c00; margin-bottom: 6px; }
+.cert-lock-title-active { color: #15803d; }
+.cert-lock-desc { font-size: 13px; color: #666; margin-bottom: 14px; line-height: 1.5; }
+.cert-lock-days { display: flex; gap: 8px; flex-wrap: wrap; }
+.cert-btn-lock-day {
+    flex: 1; min-width: 60px;
+    background: #fdfaf4;
+    border: 1px solid #d4b896;
+    color: #7a5c00;
+    border-radius: 4px;
+    padding: 8px 4px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: background .15s;
+}
+.cert-btn-lock-day:hover { background: #f0e6cc; }
+.cert-btn-lock-day:disabled { opacity: .45; cursor: default; }
+.cert-btn-unlock {
+    margin-top: 10px; width: 100%;
+    background: #fdfaf4; border: 1px solid #d4b896;
+    color: #7a5c00; border-radius: 4px;
+    padding: 9px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+}
+.cert-btn-unlock:hover { background: #f0e6cc; }
+
 @media print {
     .no-print { display: none; }
+    .cert-lock-panel { display: none; }
     body { background: #fff; padding: 0; }
     .cert-wrap { box-shadow: none; border: 1px solid #ccc; }
 }
@@ -699,6 +754,83 @@ body {
     </div>
 
 </div><!-- /cert-wrap -->
+
+<!-- Panel de bloqueo — solo visible si la sesión es propietaria del sorteo -->
+<div id="cert-lock-panel" class="cert-lock-panel" style="display:none">
+    <div id="cert-lock-view-unlocked">
+        <div class="cert-lock-title"><?= cs('lock_panel_title') ?></div>
+        <div class="cert-lock-desc"><?= cs('lock_panel_desc') ?></div>
+        <div class="cert-lock-days">
+            <button class="cert-btn-lock-day" data-days="1"><?= cs('lock_1d') ?></button>
+            <button class="cert-btn-lock-day" data-days="3"><?= cs('lock_3d') ?></button>
+            <button class="cert-btn-lock-day" data-days="7"><?= cs('lock_7d') ?></button>
+            <button class="cert-btn-lock-day" data-days="30"><?= cs('lock_30d') ?></button>
+        </div>
+    </div>
+    <div id="cert-lock-view-active" style="display:none">
+        <div class="cert-lock-title cert-lock-title-active"><?= cs('lock_active_title') ?></div>
+        <div id="cert-lock-active-desc" class="cert-lock-desc"></div>
+        <button id="cert-btn-unlock" class="cert-btn-unlock"><?= cs('lock_btn_unlock') ?></button>
+    </div>
+</div>
+
+<script>
+(function() {
+    var certId    = <?= json_encode($id) ?>;
+    var activeDesc = <?= json_encode(cs('lock_active_desc', '')) ?>;
+
+    // Verificar que esta sesión es propietaria del sorteo
+    var candidate = null;
+    try { candidate = JSON.parse(localStorage.getItem('sorteoLockCandidate')); } catch(e) {}
+    if (!candidate || candidate.id !== certId) return;
+    if (Date.now() - (candidate.ts || 0) > 8 * 3600 * 1000) return;
+
+    var panel = document.getElementById('cert-lock-panel');
+    panel.style.display = '';
+
+    function showView(view, untilFmt) {
+        document.getElementById('cert-lock-view-unlocked').style.display = view === 'unlocked' ? '' : 'none';
+        document.getElementById('cert-lock-view-active').style.display   = view === 'active'   ? '' : 'none';
+        if (view === 'active' && untilFmt) {
+            document.getElementById('cert-lock-active-desc').textContent =
+                activeDesc.replace('{0}', untilFmt);
+        }
+    }
+
+    // Consultar estado actual
+    fetch('api.php?action=get_lock&id=' + encodeURIComponent(certId))
+        .then(function(r) { return r.json(); })
+        .then(function(d) { showView(d.locked && d.is_owner ? 'active' : 'unlocked', d.locked_until_fmt); })
+        .catch(function() {});
+
+    document.querySelectorAll('.cert-btn-lock-day').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.cert-btn-lock-day').forEach(function(b) { b.disabled = true; });
+            fetch('api.php?action=lock', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id: certId, days: parseInt(btn.dataset.days)})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.locked) { location.reload(); }
+                else { document.querySelectorAll('.cert-btn-lock-day').forEach(function(b) { b.disabled = false; }); }
+            })
+            .catch(function() { document.querySelectorAll('.cert-btn-lock-day').forEach(function(b) { b.disabled = false; }); });
+        });
+    });
+
+    document.getElementById('cert-btn-unlock').addEventListener('click', function() {
+        fetch('api.php?action=unlock', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id: certId})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) { if (d.unlocked) location.reload(); });
+    });
+})();
+</script>
 
 </body>
 </html>
