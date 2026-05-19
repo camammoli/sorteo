@@ -13,13 +13,14 @@ $valid_uuid = (bool)preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-
 $valid_hash = (bool)preg_match('/^[0-9A-F]{16}$/', $hash)
            || (bool)preg_match('/^[0-9A-F]{32}$/', $hash);
 
-$state        = 'form';
-$is_legacy    = false;   // true = certificado anterior al sistema HMAC
-$sorteo       = null;
-$winners      = [];
-$drawn_at_fmt = '';
-$video_title  = '';
-$video_id_raw = '';
+$state          = 'form';
+$is_legacy      = false;
+$sorteo         = null;
+$winners        = [];
+$drawn_at_fmt   = '';
+$video_title    = '';
+$video_id_raw   = '';
+$mismo_conjunto = [];
 
 if ($id !== '' || $hash !== '') {
     if (!$valid_uuid || !$valid_hash) {
@@ -51,9 +52,10 @@ if ($id !== '' || $hash !== '') {
             }
 
             if ($expected === $hash) {
-                $state        = 'ok';
-                $video_title  = $sorteo['video_title'] ?? '';
-                $drawn_at_fmt = $drawn_at_raw ? gmdate('d/m/Y H:i', strtotime($drawn_at_raw)) . ' UTC' : '';
+                $state          = 'ok';
+                $video_title    = $sorteo['video_title'] ?? '';
+                $drawn_at_fmt   = $drawn_at_raw ? gmdate('d/m/Y H:i', strtotime($drawn_at_raw)) . ' UTC' : '';
+                $mismo_conjunto = get_sorteos_mismo_conjunto($id);
             } else {
                 $state = 'tampered';
             }
@@ -90,6 +92,9 @@ $strings = [
         'view_comment'     => 'Ver comentario en YouTube ↗',
         'back_link'        => '← Ir al Sorteador',
         'cert_link'        => '📄 Ver certificado completo',
+        'all_draws_label'  => 'Todos los sorteos para este conjunto de videos',
+        'draw_n'           => 'Sorteo #{0}',
+        'this_draw'        => 'este certificado',
     ],
     'en' => [
         'page_title'       => 'Verify certificate — YouTube Comment Picker',
@@ -119,6 +124,9 @@ $strings = [
         'view_comment'     => 'View comment on YouTube ↗',
         'back_link'        => '← Go to Comment Picker',
         'cert_link'        => '📄 View full certificate',
+        'all_draws_label'  => 'All draws for this set of videos',
+        'draw_n'           => 'Draw #{0}',
+        'this_draw'        => 'this certificate',
     ],
 ];
 $s = $strings[$lang];
@@ -308,6 +316,34 @@ body {
 .v-hash-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; flex-shrink: 0; }
 .v-hash-value { font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; color: #1e293b; word-break: break-all; }
 
+/* Lista de sorteos del mismo conjunto */
+.v-draws-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.v-draw-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+}
+.v-draw-item.current { background: #eff6ff; border-color: #93c5fd; }
+.v-draw-num { font-weight: 800; color: #64748b; min-width: 28px; font-family: Arial, sans-serif; }
+.v-draw-item.current .v-draw-num { color: #2563eb; }
+.v-draw-date { color: #64748b; flex: 1; }
+.v-draw-link { font-size: 12px; color: #2563eb; text-decoration: none; flex-shrink: 0; }
+.v-draw-link:hover { text-decoration: underline; }
+.v-draw-current-badge {
+    font-size: 10px;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: Arial, sans-serif;
+    flex-shrink: 0;
+}
+
 /* Form */
 .v-form-card {
     background: #fff;
@@ -476,6 +512,31 @@ body {
             <span class="v-hash-value"><?= vesc($hash) ?></span>
         </div>
     </div>
+
+    <?php if ($state === 'ok' && count($mismo_conjunto) > 0): ?>
+    <!-- Todos los sorteos del mismo conjunto -->
+    <div class="v-card">
+        <div class="v-card-title"><?= vs('all_draws_label') ?></div>
+        <ul class="v-draws-list">
+        <?php foreach ($mismo_conjunto as $i => $s):
+            $is_current = ($s['id'] === $id);
+            $n          = $i + 1;
+            $fecha      = $s['created_at'] ? gmdate('d/m/Y H:i', strtotime($s['created_at'])) . ' UTC' : '';
+            $cert_url   = 'certificate.php?v=' . urlencode($s['id']) . '&lang=' . vesc($lang);
+        ?>
+        <li class="v-draw-item<?= $is_current ? ' current' : '' ?>">
+            <span class="v-draw-num">#<?= $n ?></span>
+            <span class="v-draw-date"><?= vesc($fecha) ?></span>
+            <?php if ($is_current): ?>
+                <span class="v-draw-current-badge"><?= vs('this_draw') ?></span>
+            <?php else: ?>
+                <a class="v-draw-link" href="<?= vesc($cert_url) ?>" target="_blank"><?= vs('cert_link') ?></a>
+            <?php endif; ?>
+        </li>
+        <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endif; ?>
 
     <?php endif; // ok || tampered ?>
 

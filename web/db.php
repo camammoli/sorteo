@@ -294,6 +294,36 @@ function save_winners(string $sorteo_id, array $winner_rowids, array $backup_row
     $pdo->commit();
 }
 
+function _normalize_video_ids(array $sorteo): string {
+    $ids = [];
+    if (!empty($sorteo['video_ids'])) {
+        $ids = json_decode($sorteo['video_ids'], true) ?: [];
+    }
+    if (empty($ids) && !empty($sorteo['video_id'])) {
+        $ids = [$sorteo['video_id']];
+    }
+    sort($ids);
+    return implode(',', $ids);
+}
+
+// Devuelve todos los sorteos 'done' con el mismo conjunto normalizado de videos,
+// ordenados cronológicamente. Incluye el sorteo actual.
+function get_sorteos_mismo_conjunto(string $sorteo_id): array {
+    $pdo = get_db();
+    $st = $pdo->prepare("SELECT id, video_id, video_ids, video_title, created_at FROM sorteos WHERE id = ?");
+    $st->execute([$sorteo_id]);
+    $current = $st->fetch();
+    if (!$current) return [];
+
+    $target = _normalize_video_ids($current);
+
+    $all = $pdo->query(
+        "SELECT id, video_id, video_ids, video_title, created_at FROM sorteos WHERE status = 'done' ORDER BY created_at ASC"
+    )->fetchAll();
+
+    return array_values(array_filter($all, fn($s) => _normalize_video_ids($s) === $target));
+}
+
 function get_winners(string $sorteo_id): array {
     $pdo = get_db();
     $stmt = $pdo->prepare(

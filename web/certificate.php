@@ -30,6 +30,14 @@ $hmac_data   = implode('|', [
 ]);
 $verify_hash = strtoupper(substr(hash_hmac('sha256', $hmac_data, SORTEO_HMAC_SECRET), 0, 32));
 
+// Número de orden entre sorteos del mismo conjunto de videos
+$mismo_conjunto  = get_sorteos_mismo_conjunto($id);
+$draw_number     = 1;
+foreach ($mismo_conjunto as $i => $s) {
+    if ($s['id'] === $id) { $draw_number = $i + 1; break; }
+}
+$draw_total = count($mismo_conjunto);
+
 $lang = (trim($_GET['lang'] ?? 'es') === 'en') ? 'en' : 'es';
 $cert_strings = [
     'es' => [
@@ -59,6 +67,8 @@ $cert_strings = [
         'unique_user_no'  => 'No',
         'unique_user_label' => 'Usuario único',
         'draw_details' => 'Detalles del sorteo',
+        'draw_number'  => 'N.º de sorteo para este conjunto',
+        'draw_number_warning' => 'Este es el sorteo #{0} realizado para este conjunto de videos. Verificá la fecha y comparalo con el certificado original.',
         'date_from_label' => 'Comentarios desde',
         'date_to_label'   => 'Comentarios hasta',
         'keyword_label'   => 'Filtro palabra clave',
@@ -96,6 +106,8 @@ $cert_strings = [
         'unique_user_no'  => 'No',
         'unique_user_label' => 'Unique user',
         'draw_details' => 'Draw Details',
+        'draw_number'  => 'Draw # for this set',
+        'draw_number_warning' => 'This is draw #{0} for this set of videos. Verify the date and compare it against the original certificate.',
         'date_from_label' => 'Comments from',
         'date_to_label'   => 'Comments until',
         'keyword_label'   => 'Keyword filter',
@@ -418,6 +430,21 @@ body {
 }
 .btn-print:hover { opacity: .85; }
 
+/* Aviso sorteo múltiple */
+.cert-multi-warn {
+    background: #fffbeb;
+    border: 1px solid #f59e0b;
+    border-left: 4px solid #d97706;
+    border-radius: 4px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #92400e;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin-bottom: 28px;
+}
+.cert-multi-warn strong { font-weight: 700; }
+
 /* Method box */
 .cert-method-box {
     background: #fffbf0;
@@ -476,6 +503,10 @@ body {
                     <span class="cert-detail-value"><?= esc($drawn_at_fmt) ?></span>
                 </div>
                 <div class="cert-detail-item">
+                    <span class="cert-detail-label"><?= cs('draw_number') ?></span>
+                    <span class="cert-detail-value" style="<?= $draw_number > 1 ? 'color:#b45309;font-weight:800' : '' ?>">#<?= $draw_number ?></span>
+                </div>
+                <div class="cert-detail-item">
                     <span class="cert-detail-label"><?= count($winners) === 1 ? cs('winner_label') : cs('winners_label') ?></span>
                     <span class="cert-detail-value"><?= count($winners) ?></span>
                 </div>
@@ -513,6 +544,12 @@ body {
                 </div>
             </div>
         </div>
+
+        <?php if ($draw_number > 1): ?>
+        <div class="cert-multi-warn">
+            <strong>⚠ <?= cs('draw_number_warning', $draw_number) ?></strong>
+        </div>
+        <?php endif; ?>
 
         <!-- Método de sorteo -->
         <div class="cert-section">
