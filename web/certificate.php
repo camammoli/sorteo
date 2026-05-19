@@ -16,9 +16,18 @@ $winners = array_values(array_filter($all_winners, fn($w) => !$w['is_backup']));
 $backups  = array_values(array_filter($all_winners, fn($w) =>  $w['is_backup']));
 $opts = $sorteo['options'] ?? [];
 
-// Hash de verificación: MD5 de id + winner comment_ids concatenados
-$hash_input  = $id . implode(',', array_column($winners, 'comment_id'));
-$verify_hash = strtoupper(substr(md5($hash_input), 0, 16));
+// Fecha raw de la BD (UTC, tal como la guarda SQLite)
+$drawn_at_raw = !empty($all_winners) ? ($all_winners[0]['drawn_at'] ?? '') : '';
+
+// HMAC-SHA256: cubre id, video, fecha, comment_ids y autores — no falsificable sin la clave del servidor
+$hmac_data   = implode('|', [
+    $id,
+    $sorteo['video_id'] ?? '',
+    $drawn_at_raw,
+    implode(',', array_column($winners, 'comment_id')),
+    implode(',', array_column($winners, 'author')),
+]);
+$verify_hash = strtoupper(substr(hash_hmac('sha256', $hmac_data, SORTEO_HMAC_SECRET), 0, 32));
 
 $lang = (trim($_GET['lang'] ?? 'es') === 'en') ? 'en' : 'es';
 $cert_strings = [
@@ -106,15 +115,15 @@ function cs(string $key, ...$args): string {
 
 $video_id    = htmlspecialchars($sorteo['video_id'] ?? '', ENT_QUOTES);
 $video_title = htmlspecialchars($sorteo['video_title'] ?? 'Sin título', ENT_QUOTES);
-$drawn_at    = !empty($all_winners) ? ($all_winners[0]['drawn_at'] ?? date('Y-m-d H:i:s')) : date('Y-m-d H:i:s');
-$drawn_at_fmt = date('d/m/Y H:i', strtotime($drawn_at));
+$drawn_at    = $drawn_at_raw ?: date('Y-m-d H:i:s');
+$drawn_at_fmt = gmdate('d/m/Y H:i', strtotime($drawn_at)) . ' UTC';
 
 $num_winners_opt  = (int)($opts['num_winners'] ?? count($winners));
 $keyword          = $opts['keyword'] ?? '';
 $date_from        = $opts['date_from'] ?? '';
 $date_to          = $opts['date_to'] ?? '';
 $unique_users     = !empty($opts['unique_users']);
-$valid_until_fmt  = date('d/m/Y', strtotime($drawn_at . ' +365 days'));
+$valid_until_fmt  = gmdate('d/m/Y', strtotime($drawn_at . ' +365 days'));
 
 function esc(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');

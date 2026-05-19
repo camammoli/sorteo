@@ -8,9 +8,12 @@ $hash = strtoupper(trim($_GET['h'] ?? ''));
 $lang = (trim($_GET['lang'] ?? 'es') === 'en') ? 'en' : 'es';
 
 $valid_uuid = (bool)preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $id);
-$valid_hash = (bool)preg_match('/^[0-9A-F]{16}$/', $hash);
+// Acepta hash MD5 legacy (16 chars) o HMAC-SHA256 nuevo (32 chars)
+$valid_hash = (bool)preg_match('/^[0-9A-F]{16}$/', $hash)
+           || (bool)preg_match('/^[0-9A-F]{32}$/', $hash);
 
 $state        = 'form';
+$is_legacy    = false;   // true = certificado anterior al sistema HMAC
 $sorteo       = null;
 $winners      = [];
 $drawn_at_fmt = '';
@@ -25,15 +28,31 @@ if ($id !== '' || $hash !== '') {
         if (!$sorteo || $sorteo['status'] !== 'done') {
             $state = 'not_found';
         } else {
-            $all     = get_winners($id);
-            $winners = array_values(array_filter($all, fn($w) => !$w['is_backup']));
-            $expected = strtoupper(substr(md5($id . implode(',', array_column($winners, 'comment_id'))), 0, 16));
+            $all          = get_winners($id);
+            $winners      = array_values(array_filter($all, fn($w) => !$w['is_backup']));
+            $drawn_at_raw = !empty($all) ? ($all[0]['drawn_at'] ?? '') : '';
+            $video_id_raw = $sorteo['video_id'] ?? '';
+
+            if (strlen($hash) === 32) {
+                // Verificación HMAC-SHA256 — reconstruye exactamente el mismo input que certificate.php
+                $hmac_data = implode('|', [
+                    $id,
+                    $video_id_raw,
+                    $drawn_at_raw,
+                    implode(',', array_column($winners, 'comment_id')),
+                    implode(',', array_column($winners, 'author')),
+                ]);
+                $expected = strtoupper(substr(hash_hmac('sha256', $hmac_data, SORTEO_HMAC_SECRET), 0, 32));
+            } else {
+                // Verificación MD5 legacy (certificados emitidos antes del sistema HMAC)
+                $expected  = strtoupper(substr(md5($id . implode(',', array_column($winners, 'comment_id'))), 0, 16));
+                $is_legacy = true;
+            }
+
             if ($expected === $hash) {
                 $state        = 'ok';
                 $video_title  = $sorteo['video_title'] ?? '';
-                $video_id_raw = $sorteo['video_id']    ?? '';
-                $drawn_at_raw = !empty($all) ? ($all[0]['drawn_at'] ?? '') : '';
-                $drawn_at_fmt = $drawn_at_raw ? date('d/m/Y H:i', strtotime($drawn_at_raw)) : '';
+                $drawn_at_fmt = $drawn_at_raw ? gmdate('d/m/Y H:i', strtotime($drawn_at_raw)) . ' UTC' : '';
             } else {
                 $state = 'tampered';
             }
@@ -47,7 +66,8 @@ $strings = [
         'heading'          => 'Verificación de certificado',
         'subheading'       => 'Sorteador de YouTube · mammoli.ar',
         'ok_title'         => 'Certificado auténtico',
-        'ok_desc'          => 'El certificado es válido y no fue modificado desde que se emitió.',
+        'ok_desc'          => 'El certificado es válido. Su firma criptográfica coincide con los datos del servidor.',
+        'ok_legacy_desc'   => 'El certificado es válido. Fue emitido antes del sistema de firma segura — verificá visualmente que los datos del servidor coincidan con el documento.',
         'tampered_title'   => 'Certificado alterado',
         'tampered_desc'    => 'El contenido no coincide con el sorteo original. El documento fue modificado después de emitido.',
         'not_found_title'  => 'Sorteo no encontrado',
@@ -60,10 +80,11 @@ $strings = [
         'form_hash_label'  => 'Código de verificación',
         'form_btn'         => 'Verificar',
         'form_id_ph'       => 'xxxxxxxx-xxxx-4xxx-xxxx-xxxxxxxxxxxx',
-        'form_hash_ph'     => 'Ej: A1B2C3D4E5F60123',
+        'form_hash_ph'     => 'Código de 16 o 32 caracteres',
         'video_label'      => 'Video',
         'date_label'       => 'Fecha del sorteo',
         'winners_label'    => 'Ganadores verificados',
+        'server_data_label'=> 'Datos reales en el servidor',
         'hash_label'       => 'Código',
         'view_comment'     => 'Ver comentario en YouTube ↗',
         'back_link'        => '← Ir al Sorteador',
@@ -74,7 +95,8 @@ $strings = [
         'heading'          => 'Certificate Verification',
         'subheading'       => 'YouTube Comment Picker · mammoli.ar',
         'ok_title'         => 'Authentic Certificate',
-        'ok_desc'          => 'This certificate is valid and has not been modified since it was issued.',
+        'ok_desc'          => 'This certificate is valid. Its cryptographic signature matches the server data.',
+        'ok_legacy_desc'   => 'This certificate is valid. It was issued before the secure signature system — visually verify that the server data matches the document.',
         'tampered_title'   => 'Tampered Certificate',
         'tampered_desc'    => 'The content does not match the original draw. The document was modified after being issued.',
         'not_found_title'  => 'Draw Not Found',
@@ -87,10 +109,11 @@ $strings = [
         'form_hash_label'  => 'Verification code',
         'form_btn'         => 'Verify',
         'form_id_ph'       => 'xxxxxxxx-xxxx-4xxx-xxxx-xxxxxxxxxxxx',
-        'form_hash_ph'     => 'E.g.: A1B2C3D4E5F60123',
+        'form_hash_ph'     => '16 or 32 character code',
         'video_label'      => 'Video',
         'date_label'       => 'Draw date',
         'winners_label'    => 'Verified Winners',
+        'server_data_label'=> 'Actual data on server',
         'hash_label'       => 'Code',
         'view_comment'     => 'View comment on YouTube ↗',
         'back_link'        => '← Go to Comment Picker',
@@ -391,16 +414,18 @@ body {
             <div class="v-status-icon" style="background:<?= $sc['icon_bg'] ?>"><?= $sc['icon'] ?></div>
             <div>
                 <div class="v-status-title" style="color:<?= $sc['text'] ?>"><?= vs($state . '_title') ?></div>
-                <div class="v-status-desc" style="color:<?= $sc['text'] ?>"><?= vs($state . '_desc') ?></div>
+                <div class="v-status-desc" style="color:<?= $sc['text'] ?>">
+                    <?= ($state === 'ok' && $is_legacy) ? vs('ok_legacy_desc') : vs($state . '_desc') ?>
+                </div>
             </div>
         </div>
     </div>
 
-    <?php if ($state === 'ok'): ?>
+    <?php if ($state === 'ok' || $state === 'tampered'): ?>
 
-    <!-- Detalles del sorteo -->
+    <!-- Datos del servidor — siempre se muestran para comparación visual -->
     <div class="v-card">
-        <div class="v-card-title"><?= vs('video_label') ?></div>
+        <div class="v-card-title"><?= $state === 'tampered' ? vs('server_data_label') : vs('video_label') ?></div>
         <div class="v-details">
             <?php if ($video_title): ?>
             <div class="v-detail">
@@ -451,7 +476,7 @@ body {
         </div>
     </div>
 
-    <?php endif; ?>
+    <?php endif; // ok || tampered ?>
 
 <?php endif; ?>
 
