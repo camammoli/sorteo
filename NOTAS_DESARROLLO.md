@@ -117,6 +117,40 @@ Acceso por URL: `mammoli.ar/sorteo/admin.php?key=VALOR`
 
 ## Historial de versiones
 
+### v2.7 — 2026-05-19 (Claude Code)
+
+**Integridad del certificado:**
+- `index.php`: al hacer click en "Certificado PDF" se deshabilita el botón "Sortear de nuevo" para preservar la integridad del certificado emitido — no se puede re-sortear una vez que el certificado fue abierto
+
+### v2.6 — 2026-05-19 (Claude Code)
+
+**Panel de bloqueo:**
+- Panel de bloqueo movido de `index.php` a `certificate.php`
+- Solo visible si `localStorage.sorteoLockCandidate` contiene el UUID del certificado actual con antigüedad menor a 8 horas — garantiza que solo quien hizo el sorteo en esa sesión puede bloquear
+- `index.php`: guarda el UUID en `localStorage` al momento de abrir el certificado (no antes)
+- `certificate.php`: JS lee el localStorage, consulta `api.php?action=get_lock` y muestra el panel en estado activo o disponible; `location.reload()` al bloquear/desbloquear para actualizar el badge del PHP
+
+### v2.5 — 2026-05-19 (Claude Code)
+
+**Sistema de bloqueo de conjunto de videos (sorteo oficial):**
+- `db.php`: tabla `sorteo_locks` (sorteo_id, video_set normalizado, locked_until, created_at) + funciones `get_active_lock()`, `create_lock()`, `delete_lock()`, `video_set_from_sorteo()`
+- `api.php`: endpoint `get_lock` — devuelve estado del lock y si la sesión es propietaria; endpoint `lock` — crea el lock (1/3/7/30 días); endpoint `unlock` — elimina el lock del sorteo; en `create` — rechaza con HTTP 403 y `code: LOCKED` si el conjunto está bloqueado
+- `index.php`: strings ES/EN para el panel de bloqueo (luego movidos al certificado en v2.6)
+- `certificate.php`: badge verde "✓ Sorteo oficial — hasta [fecha]" si el lock activo pertenece a este sorteo; banner rojo si hay otro sorteo marcado como oficial para el mismo conjunto; el aviso de sorteo múltiple (#N) solo aparece cuando no hay lock activo
+- `verificar.php`: badge "✓ oficial" en la lista de sorteos del mismo conjunto cuando hay lock activo
+
+**Notas técnicas:**
+- El video_set se normaliza ordenando los IDs alfabéticamente antes de guardar/comparar — sorteos con los mismos videos en distinto orden se consideran el mismo conjunto
+- El lock vence automáticamente; al vencer, el comportamiento vuelve al neutro (lista sin juicio)
+- El lock solo puede crearlo el propietario de la sesión (quien abrió el certificado desde el sorteador); cualquiera con el UUID podría llamar a la API directamente, pero el modelo de amenaza es suficiente para el uso real
+
+### v2.4 — 2026-05-19 (Claude Code)
+
+**Transparencia de sorteos múltiples:**
+- `db.php`: `get_sorteos_mismo_conjunto()` — normaliza video_ids (orden alfabético) y devuelve todos los sorteos `done` del mismo conjunto ordenados cronológicamente
+- `certificate.php`: muestra N.º de sorteo (#1, #2…) en los detalles; si N > 1, aviso amarillo visible
+- `verificar.php`: lista todos los sorteos del mismo conjunto con fecha UTC y link al certificado de cada uno; el actual destacado en azul
+
 ### v2.3 — 2026-05-19 (Claude Code)
 
 **Seguridad y certificados:**
