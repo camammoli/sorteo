@@ -34,11 +34,14 @@ $js_init_id = $init_id ? json_encode($init_id) : 'null';
 <link rel="canonical" href="<?= htmlspecialchars($canonical) ?>">
 
 <!-- Open Graph -->
-<meta property="og:title"       content="Sorteador de YouTube">
-<meta property="og:description" content="<?= htmlspecialchars($og_desc) ?>">
-<meta property="og:url"         content="<?= htmlspecialchars($canonical) ?>">
 <meta property="og:type"        content="website">
-<meta name="twitter:card"       content="summary">
+<meta property="og:site_name"   content="Sorteador de YouTube">
+<meta property="og:url"         content="<?= htmlspecialchars($canonical) ?>">
+<meta property="og:title"       content="<?= htmlspecialchars($page_title) ?>">
+<meta property="og:description" content="<?= htmlspecialchars($og_desc) ?>">
+<meta name="twitter:card"        content="summary">
+<meta name="twitter:title"       content="<?= htmlspecialchars($page_title) ?>">
+<meta name="twitter:description" content="<?= htmlspecialchars($og_desc) ?>">
 
 <style>
 /* ── Reset & base ───────────────────────────────────────────────────────────── */

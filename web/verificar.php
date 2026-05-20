@@ -156,6 +156,23 @@ $sc = $state_colors[$state] ?? null;
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= vs('page_title') ?></title>
 <meta name="robots" content="index,follow">
+<?php
+$_v_canonical = 'https://mammoli.ar/sorteo/verificar.php';
+if ($id !== '') $_v_canonical .= '?v=' . urlencode($id) . '&h=' . urlencode($hash) . '&lang=' . $lang;
+$_v_desc = $lang === 'en'
+  ? 'Verify the authenticity of a YouTube raffle certificate — YouTube Comment Picker by mammoli.ar'
+  : 'Verificá la autenticidad de un certificado de sorteo de YouTube — Sorteador de mammoli.ar';
+?>
+<link rel="canonical" href="<?= htmlspecialchars($_v_canonical) ?>">
+<meta name="description"         content="<?= htmlspecialchars($_v_desc) ?>">
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="Sorteador de YouTube">
+<meta property="og:url"          content="<?= htmlspecialchars($_v_canonical) ?>">
+<meta property="og:title"        content="<?= htmlspecialchars(vs('page_title')) ?>">
+<meta property="og:description"  content="<?= htmlspecialchars($_v_desc) ?>">
+<meta name="twitter:card"         content="summary">
+<meta name="twitter:title"        content="<?= htmlspecialchars(vs('page_title')) ?>">
+<meta name="twitter:description"  content="<?= htmlspecialchars($_v_desc) ?>">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
