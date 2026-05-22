@@ -51,10 +51,9 @@ function extract_video_id(string $url): ?string {
 }
 
 function notify_telegram(string $msg): void {
-    $token   = 'REDACTED_TG_TOKEN';
-    $chat_id = '124659252';
+    if (!defined('TG_BOT_TOKEN') || !defined('TG_CHAT_ID')) return;
     @file_get_contents(
-        "https://api.telegram.org/bot{$token}/sendMessage?chat_id={$chat_id}&text=" . urlencode($msg)
+        "https://api.telegram.org/bot" . TG_BOT_TOKEN . "/sendMessage?chat_id=" . TG_CHAT_ID . "&text=" . urlencode($msg)
     );
 }
 
