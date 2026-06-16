@@ -43,6 +43,10 @@ $js_init_id = $init_id ? json_encode($init_id) : 'null';
 <meta name="twitter:title"       content="<?= htmlspecialchars($page_title) ?>">
 <meta name="twitter:description" content="<?= htmlspecialchars($og_desc) ?>">
 
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Sorteador de YouTube","url":"https://mammoli.ar/sorteo/","description":"Sorteá ganadores entre los comentarios de cualquier video de YouTube. Sin apps, sin registro, resultados verificables.","applicationCategory":"EntertainmentApplication","operatingSystem":"Web","inLanguage":"es","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Carlos Mammoli","url":"https://mammoli.ar/"}}
+</script>
+
 <style>
 /* ── Reset & base ───────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
