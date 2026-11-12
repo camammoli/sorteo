@@ -1,5 +1,7 @@
 # YouTube Comment Picker
 
+[![Archivado en Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/camammoli/sorteo/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/camammoli/sorteo)
+
 Pick random winners from YouTube comment sections — transparently and verifiably. Generates a certificate signed with HMAC-SHA256 that anyone can verify against the server.
 
 **[→ Try it at mammoli.ar/sorteo](https://mammoli.ar/sorteo/)**

@@ -1,5 +1,7 @@
 # Sorteador de YouTube
 
+[![Archivado en Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/camammoli/sorteo/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/camammoli/sorteo)
+
 Sorteá comentarios de videos de YouTube de forma transparente y verificable. Genera un certificado firmado con HMAC-SHA256 que cualquiera puede verificar en el servidor.
 
 **[→ Usalo en mammoli.ar/sorteo](https://mammoli.ar/sorteo/)**
